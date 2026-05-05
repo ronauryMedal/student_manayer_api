@@ -62,7 +62,7 @@ model Career {
   totalCredits Int
   totalSemester Int
   subjects Subject[]
- userCareers  UserCareer[]
+  userCareers  UserCareer[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
