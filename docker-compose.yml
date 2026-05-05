@@ -45,6 +45,8 @@ services:
       NODE_ENV: production
       PORT: ${PORT}
       DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-cambiar-en-produccion}
+      JWT_EXPIRES_SECONDS: ${JWT_EXPIRES_SECONDS:-604800}
     ports:
       - "3000:3000"
 
