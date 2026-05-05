@@ -31,6 +31,86 @@
 $ npm install
 ```
 
+## Arrancar el proyecto con Docker
+
+### 1) Preparar variables de entorno
+
+Crea tu `.env` a partir del archivo de ejemplo.
+
+```bash
+# Linux/Mac
+cp .env.example .env
+
+# Windows PowerShell
+copy .env.example .env
+```
+
+### 2) Levantar contenedores
+
+```bash
+docker compose up -d --build
+```
+
+Esto levanta:
+
+- API NestJS en `http://localhost:3000`
+- Swagger en `http://localhost:3000/docs`
+- PostgreSQL en `localhost:5432`
+- pgAdmin en `http://localhost:5050`
+
+### 3) Ejecutar migraciones Prisma
+
+Si ya tienes migraciones creadas:
+
+```bash
+docker compose exec api npx prisma migrate deploy
+```
+
+Si es la primera migracion del proyecto:
+
+```bash
+docker compose exec api npx prisma migrate dev --name init
+```
+
+### 4) Conectar pgAdmin a PostgreSQL
+
+1. Entra a pgAdmin en [http://localhost:5050](http://localhost:5050) con las credenciales de tu `.env`:
+   - Email: `PGADMIN_DEFAULT_EMAIL`
+   - Password: `PGADMIN_DEFAULT_PASSWORD`
+
+2. Crea un servidor nuevo (**Register - Server**) y completa las pestañas así:
+
+**Pestaña General**
+
+| Campo | Valor |
+|-------|--------|
+| Name | Cualquier nombre (obligatorio), por ejemplo `Study Manager DB` |
+
+**Pestaña Connection**
+
+| Campo | Valor |
+|-------|--------|
+| Host name/address | `db` |
+| Port | `5432` |
+| Maintenance database | `POSTGRES_DB` del `.env` (por defecto `study_manager`; también sirve `postgres`) |
+| Username | `POSTGRES_USER` del `.env` (por defecto `postgres`) |
+| Password | `POSTGRES_PASSWORD` del `.env` (por defecto `postgres`) |
+
+**Importante:** desde dentro de Docker Compose, el host de Postgres es el nombre del servicio (`db`), no `localhost`.
+
+### 5) Logs y apagado
+
+```bash
+# ver logs de la API
+docker compose logs -f api
+
+# detener contenedores
+docker compose down
+
+# detener y borrar volumenes (borra datos de BD)
+docker compose down -v
+```
+
 ## Compile and run the project
 
 ```bash
