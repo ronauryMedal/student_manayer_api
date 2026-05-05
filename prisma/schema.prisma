@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+enum GradeType {
+  EXAM
+  TASK
+  PROJECT
+}
+enum NotificationType {
+  TASK_REMINDER
+  GENERAL
+}
+
+ model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+
+  careers        UserCareer[]
+  tasks          Task[]
+  califications         calification[]
+  notifications  Notification[]
+  sentMessages   Message[] @relation("sender")
+  receivedMessages Message[] @relation("receiver")
+  approvedSubjects UserApprovedSubject[]
+}
+
+
+model Career {
+  id        String   @id @default(uuid())
+  name      String
+  description String
+  totalCredits Int
+  totalSemester Int
+  subjects Subject[]
+ userCareers  UserCareer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+}
+
+model UserCareer {
+  id              String   @id @default(uuid())
+  userId          String
+  careerId        String
+  currentSemester Int
+
+  user    User    @relation(fields: [userId], references: [id])
+  career  Career  @relation(fields: [careerId], references: [id])
+  semesters UserSemester[]
+}
+
+model UserSemester {
+  id           String @id @default(uuid())
+  userCareerId String
+  number       Int
+  isActive     Boolean @default(false)
+
+  userCareer UserCareer @relation(fields: [userCareerId], references: [id])
+}
+
+
+model Subject {
+  id              String @id @default(uuid())
+  name            String
+  credits         Int
+  semesterNumber  Int
+  careerId        String
+
+  career   Career   @relation(fields: [careerId], references: [id])
+  teachers SubjectTeacher[]
+  tasks    Task[]
+  califications   calification[]
+  approvedByUsers UserApprovedSubject[]
+}
+
+model UserApprovedSubject {
+  id         String   @id @default(uuid())
+  userId     String
+  subjectId  String
+  approvedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([userId, subjectId])
+}
+
+model Teacher {
+  id    String @id @default(uuid())
+  name  String
+  email String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subjects SubjectTeacher[]
+}
+
+model SubjectTeacher {
+  id           String @id @default(uuid())
+  subjectId    String
+  teacherId    String
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  userId    String
+  subjectId String
+
+  user    User    @relation(fields: [userId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+}
+
+model calification {
+  id        String    @id @default(uuid())
+  score     Float
+  maxScore  Float
+  type      GradeType
+  createdAt DateTime  @default(now())
+
+  userId    String
+  subjectId String
+
+  user    User    @relation(fields: [userId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  createdAt  DateTime @default(now())
+
+  senderId   String
+  receiverId String
+
+  sender   User @relation("sender", fields: [senderId], references: [id])
+  receiver User @relation("receiver", fields: [receiverId], references: [id])
+}
+
+/* tomar en cuanta poder poner la cantidad de nota que sacaste en un examen, tarea, proyecto, etc. en caso de te proporconen la nota  */
+/* los creditos de la carrera y y credito por materia  */
