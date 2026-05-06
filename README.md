@@ -30,6 +30,8 @@
 ```bash
 $ npm install
 ```
+## subir todo los cambios a docker
+docker compose up -d --build api
 
 ## Arrancar el proyecto con Docker
 

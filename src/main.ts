@@ -13,6 +13,8 @@ async function bootstrap() {
     .setTitle('Study Manager API')
     .setDescription('Documentacion de la API para Study Manager')
     .setVersion('1.0')
+    .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

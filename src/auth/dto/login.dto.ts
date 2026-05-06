@@ -10,6 +10,6 @@ export class LoginDto {
   @ApiProperty({ example: 'tu-password-seguro' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 }
