@@ -15,6 +15,9 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
+      include: {
+        careers: true,
+      },
     });
 
     if (!user) {
@@ -38,7 +41,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        careers: user.careers[0] ? user.careers[0] : null,
       },
     };
   }

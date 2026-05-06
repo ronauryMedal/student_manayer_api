@@ -5,9 +5,26 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CareersModule } from './careers/careers.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { TasksModule } from './tasks/tasks.module';
+import { UserCareersModule } from './user-careers/user-careers.module';
+import { SubjectTeachersModule } from './subject-teachers/subject-teachers.module';
+import { UserApprovedSubjectsModule } from './user-approved-subjects/user-approved-subjects.module';
+import { UserSemestersModule } from './user-semesters/user-semesters.module';
 
 @Module({
-  imports: [PrismaModule, UsersModule, AuthModule, CareersModule],
+  imports: [
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    CareersModule,
+    TeachersModule,
+    TasksModule,
+    UserCareersModule,
+    UserSemestersModule,
+    SubjectTeachersModule,
+    UserApprovedSubjectsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

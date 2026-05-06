@@ -1,26 +1,90 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCareerDto } from './dto/create-career.dto';
 import { UpdateCareerDto } from './dto/update-career.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CareersService {
-  create(createCareerDto: CreateCareerDto) {
-    return 'This action adds a new career';
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(createCareerDto: CreateCareerDto) {
+    const career = await this.prisma.career.create({
+      data: {
+        ...createCareerDto,
+      },
+    });
+    return career;
   }
 
-  findAll() {
-    return `This action returns all careers`;
+  async findAll() {
+    const careers = await this.prisma.career.findMany( {
+      include: {
+        subjects: true,
+        userCareers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            semesters: true,
+          },
+        },
+      },
+    });
+    return careers;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} career`;
+  async findOne(id: string) {
+    const career = await this.prisma.career.findUnique({
+      where: { id },
+      include: {
+        subjects: true,
+        userCareers: {
+          include: {
+            user: true,
+            semesters: {
+              select: {
+                id: true,
+                number: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+    return career;
   }
 
-  update(id: number, updateCareerDto: UpdateCareerDto) {
-    return `This action updates a #${id} career`;
+  async update(id: string, updateCareerDto: UpdateCareerDto) {
+    const career = await this.prisma.career.findUnique({
+      where: { id },
+    });
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+    return this.prisma.career.update({
+      where: { id },
+      data: updateCareerDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} career`;
+  async remove(id: string) {
+    const career = await this.prisma.career.findUnique({
+      where: { id },
+    });
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+    return this.prisma.career.delete({
+      where: { id },
+    });
   }
 }
