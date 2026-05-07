@@ -62,11 +62,13 @@ export class UserCareersService {
     }
 
     const existingRelation = await this.prisma.userCareer.findFirst({
-      where: { userId, careerId },
+      where: { userId },
     });
 
     if (existingRelation) {
-      throw new ConflictException('User is already enrolled in this career');
+      throw new ConflictException(
+        'User already has a career assigned. Only admin can change it.',
+      );
     }
 
     return this.prisma.userCareer.create({

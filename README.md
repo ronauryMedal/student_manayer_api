@@ -74,6 +74,25 @@ Si es la primera migracion del proyecto:
 docker compose exec api npx prisma migrate dev --name init
 ```
 
+### 3.1) Cargar datos de prueba (seed)
+
+Local (solo si tu `DATABASE_URL` apunta a una BD accesible desde tu host):
+
+```bash
+npm run prisma:seed
+```
+
+En Docker (recomendado para este proyecto):
+
+```bash
+docker compose exec api npx prisma db seed
+```
+
+Usuarios de prueba que crea el seed:
+
+- Admin: `admin@study.com` / `12345678`
+- Student: `student@study.com` / `12345678`
+
 ### 4) Conectar pgAdmin a PostgreSQL
 
 1. Entra a pgAdmin en [http://localhost:5050](http://localhost:5050) con las credenciales de tu `.env`:

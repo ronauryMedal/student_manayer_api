@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -14,19 +15,19 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateUserCareerDto } from './dto/create-user-career.dto';
+import { SelectOwnCareerDto } from './dto/select-own-career.dto';
 import { UpdateUserCareerDto } from './dto/update-user-career.dto';
 import { UserCareersService } from './user-careers.service';
 
 @ApiTags('user-careers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
 @Controller('user-careers')
 export class UserCareersController {
   constructor(private readonly userCareersService: UserCareersService) {}
 
-  
   @Post()
+  @Roles(Role.ADMIN)
   create(@Body() createUserCareerDto: CreateUserCareerDto) {
     return this.userCareersService.enrollUserInCareer(
       createUserCareerDto.userId,
@@ -35,12 +36,26 @@ export class UserCareersController {
     );
   }
 
+  @Post('me')
+  selectMyCareer(
+    @Body() selectOwnCareerDto: SelectOwnCareerDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.userCareersService.enrollUserInCareer(
+      req.user?.id as string,
+      selectOwnCareerDto.careerId,
+      selectOwnCareerDto.currentSemester,
+    );
+  }
+
   @Get()
+  @Roles(Role.ADMIN)
   findAll() {
     return this.userCareersService.findAll();
   }
 
   @Get('user/:userId')
+  @Roles(Role.ADMIN)
   findByUser(@Param('userId') userId: string) {
     return this.userCareersService.findByUser(userId);
   }
@@ -51,6 +66,7 @@ export class UserCareersController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateUserCareerDto: UpdateUserCareerDto,
@@ -62,6 +78,7 @@ export class UserCareersController {
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.userCareersService.remove(id);
   }
