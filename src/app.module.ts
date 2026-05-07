@@ -9,6 +9,7 @@ import { TeachersModule } from './teachers/teachers.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UserCareersModule } from './user-careers/user-careers.module';
 import { SubjectTeachersModule } from './subject-teachers/subject-teachers.module';
+import { SubjectsModule } from './subjects/subjects.module';
 import { UserApprovedSubjectsModule } from './user-approved-subjects/user-approved-subjects.module';
 import { UserSemestersModule } from './user-semesters/user-semesters.module';
 
@@ -22,6 +23,7 @@ import { UserSemestersModule } from './user-semesters/user-semesters.module';
     TasksModule,
     UserCareersModule,
     UserSemestersModule,
+    SubjectsModule,
     SubjectTeachersModule,
     UserApprovedSubjectsModule,
   ],

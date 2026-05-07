@@ -1,8 +1,25 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateUserApprovedSubjectDto } from './dto/create-user-approved-subject.dto';
 import { UpdateUserApprovedSubjectDto } from './dto/update-user-approved-subject.dto';
 import { UserApprovedSubjectsService } from './user-approved-subjects.service';
 
+@ApiTags('user-approved-subjects')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('user-approved-subjects')
 export class UserApprovedSubjectsController {
   constructor(
@@ -10,6 +27,7 @@ export class UserApprovedSubjectsController {
   ) {}
 
   @Post()
+  @Roles(Role.ADMIN)
   create(@Body() createUserApprovedSubjectDto: CreateUserApprovedSubjectDto) {
     return this.userApprovedSubjectsService.create(createUserApprovedSubjectDto);
   }
@@ -25,6 +43,7 @@ export class UserApprovedSubjectsController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateUserApprovedSubjectDto: UpdateUserApprovedSubjectDto,
@@ -36,6 +55,7 @@ export class UserApprovedSubjectsController {
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.userApprovedSubjectsService.remove(id);
   }

@@ -1,13 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CareersService } from './careers.service';
 import { CreateCareerDto } from './dto/create-career.dto';
 import { UpdateCareerDto } from './dto/update-career.dto';
 
+@ApiTags('careers')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('careers')
 export class CareersController {
   constructor(private readonly careersService: CareersService) {}
 
   @Post()
+  @Roles(Role.ADMIN)
   create(@Body() createCareerDto: CreateCareerDto) {
     return this.careersService.create(createCareerDto);
   }
@@ -23,11 +41,13 @@ export class CareersController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() updateCareerDto: UpdateCareerDto) {
     return this.careersService.update(id, updateCareerDto);
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.careersService.remove(id);
   }
