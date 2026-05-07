@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -41,6 +42,25 @@ export class UserCareersService {
     careerId: string,
     currentSemester: number,
   ) {
+    const [user, career] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId } }),
+      this.prisma.career.findUnique({ where: { id: careerId } }),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+
+    if (currentSemester > career.totalSemester) {
+      throw new BadRequestException(
+        `Current semester cannot exceed ${career.totalSemester}`,
+      );
+    }
+
     const existingRelation = await this.prisma.userCareer.findFirst({
       where: { userId, careerId },
     });
@@ -76,10 +96,19 @@ export class UserCareersService {
   async updateCurrentSemester(id: string, currentSemester: number) {
     const relation = await this.prisma.userCareer.findUnique({
       where: { id },
+      include: {
+        career: true,
+      },
     });
 
     if (!relation) {
       throw new NotFoundException('UserCareer relation not found');
+    }
+
+    if (currentSemester > relation.career.totalSemester) {
+      throw new BadRequestException(
+        `Current semester cannot exceed ${relation.career.totalSemester}`,
+      );
     }
 
     return this.prisma.userCareer.update({

@@ -1,12 +1,31 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateUserCareerDto } from './dto/create-user-career.dto';
 import { UpdateUserCareerDto } from './dto/update-user-career.dto';
 import { UserCareersService } from './user-careers.service';
 
+@ApiTags('user-careers')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 @Controller('user-careers')
 export class UserCareersController {
   constructor(private readonly userCareersService: UserCareersService) {}
 
+  
   @Post()
   create(@Body() createUserCareerDto: CreateUserCareerDto) {
     return this.userCareersService.enrollUserInCareer(
