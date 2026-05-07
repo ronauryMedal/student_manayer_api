@@ -25,6 +25,11 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Documentacion para Frontend
+
+- Guia de endpoints para consumo desde frontend: `docs/frontend-api.md`
+- OpenAPI JSON para generar cliente: `http://localhost:3000/docs-json`
+
 ## Project setup
 
 ```bash
