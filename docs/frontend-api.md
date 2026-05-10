@@ -65,11 +65,15 @@ Response (resumen):
 
 ## Reglas de permisos (resumen)
 
-- **ADMIN**: puede crear/editar/eliminar catalogos y relaciones administrativas.
-- **STUDENT**: acceso autenticado a lectura y recursos personales.
-- `tasks`: requiere JWT; cada usuario solo ve/edita sus tareas.
-- `user-careers/me`: estudiante puede seleccionar su carrera una sola vez.
-- `user-approved-subjects/me`: solo **STUDENT**; el estudiante lista, agrega o quita **sus** materias. La materia debe pertenecer a la misma carrera en la que está inscrito (`UserCareer`).
+- **ADMIN**: catálogo global (`GET /careers`, `POST /careers`, etc.), materias de cualquier carrera, resto de módulos administrativos.
+- **STUDENT**:
+  - Crea **sus propias carreras** con institución (`POST /careers/me`). Puede haber el mismo nombre de carrera en distintas instituciones o entre usuarios; solo ve las que **él creó** (`GET /careers/me`, `GET /careers/:id` si es dueño).
+  - Agrega **materias solo a carreras de las que es dueño** (`POST /subjects/me`, `quarterNumber` = cuatrimestre). Lista sus materias con `GET /subjects/me`.
+  - Horarios de materia: puede gestionar horarios de materias de **sus** carreras (mismo criterio de dueño que admin para las suyas).
+  - Asigna **profesores del catálogo** a sus materias con `POST /subject-teachers/me` (ver Subject Teachers).
+  - `POST /user-careers/me`: activa o **cambia** la carrera inscrita; solo acepta `careerId` de carreras **creadas por el mismo usuario** (`ownerUserId`).
+  - `user-approved-subjects/me`: registra materias en su malla; la materia debe ser de **su** plan (carrera con su `ownerUserId`) y coincidir con su `UserCareer` activo.
+- `tasks`: JWT; cada usuario solo ve/edita sus tareas.
 
 ## Endpoints por modulo
 
@@ -89,22 +93,45 @@ Response (resumen):
 
 ## Careers
 
-- `GET /careers` (JWT)
-- `GET /careers/:id` (JWT)
-- `POST /careers` (JWT + ADMIN)
-- `PATCH /careers/:id` (JWT + ADMIN)
-- `DELETE /careers/:id` (JWT + ADMIN)
+Cada carrera tiene **`institution`** (institución). El mismo **nombre** de carrera puede repetirse en otra institución o en otro usuario; lo que define el plan personal es **`ownerUserId`** (dueño). Las creadas por admin tienen `ownerUserId` null (catálogo).
 
-Body create/update:
+- `GET /careers` (**solo ADMIN**): todas las carreras (catálogo + personales de todos los usuarios).
+- `GET /careers/me` (**STUDENT**): solo carreras **que tú creaste**.
+- `POST /careers/me` (**STUDENT**): crea tu plan; por defecto lo **activa** como inscripción actual (actualiza `UserCareer` si ya existía).
+- `POST /careers` (**ADMIN**): carrera de catálogo (`ownerUserId` null).
+- `GET /careers/:id` (JWT): admin ve cualquiera; estudiante **solo** si es dueño de esa carrera.
+- `PATCH /careers/:id` / `DELETE /careers/:id` (JWT): admin cualquiera; estudiante **solo** sus carreras (no puede borrar/editar catálogo admin).
+
+Body **admin** `POST /careers` y **estudiante** `POST /careers/me` (mismos campos base + opcionales en `/me`):
 
 ```json
 {
   "name": "Ingenieria de Software",
+  "institution": "Universidad Nacional",
   "description": "Carrera orientada al desarrollo de software",
   "totalCredits": 240,
   "totalSemester": 12
 }
 ```
+
+`totalSemester` = cantidad de **cuatrimestres** (períodos) del plan.
+
+**`POST /careers/me`** opcionales:
+
+```json
+{
+  "name": "Ingenieria de Software",
+  "institution": "Universidad Nacional",
+  "description": "...",
+  "totalCredits": 240,
+  "totalSemester": 12,
+  "activate": true,
+  "currentSemester": 1
+}
+```
+
+- `activate` (default `true`): si es `true`, esta carrera queda como tu plan activo (`UserCareer`).
+- `currentSemester`: cuatrimestre actual al activar (debe ser ≤ `totalSemester`).
 
 ## Teachers
 
@@ -125,11 +152,12 @@ Body create/update:
 
 ## Subjects
 
-- `GET /subjects` (JWT)
-- `GET /subjects/:id` (JWT)
-- `POST /subjects` (JWT + ADMIN)
-- `PATCH /subjects/:id` (JWT + ADMIN)
-- `DELETE /subjects/:id` (JWT + ADMIN)
+- `GET /subjects` (**solo ADMIN**): todas las materias.
+- `GET /subjects/me` (**STUDENT**): materias cuyo `career.ownerUserId` eres tú.
+- `POST /subjects` (**ADMIN**): crea materia en cualquier carrera.
+- `POST /subjects/me` (**STUDENT**): crea materia; `careerId` debe ser una carrera **que tú creaste**.
+- `GET /subjects/:id` (JWT): admin; estudiante solo si la materia pertenece a **su** carrera (dueño).
+- `PATCH /subjects/:id` / `DELETE /subjects/:id` (JWT): misma regla de acceso que `GET` (admin o dueño del plan).
 
 ### Modalidad (`modality`)
 
@@ -155,13 +183,15 @@ Si `modality` es **`IN_PERSON`** o **`HYBRID`**, son **obligatorios** (strings n
 
 Si `modality` es **`VIRTUAL`**, esos tres campos se guardan como `null` y no aplican.
 
+**`quarterNumber`**: cuatrimestre (período) en el plan; debe estar entre `1` y `totalSemester` de la carrera.
+
 Body create/update:
 
 ```json
 {
   "name": "Programacion I",
   "credits": 4,
-  "semesterNumber": 1,
+  "quarterNumber": 1,
   "careerId": "career_uuid",
   "modality": "HYBRID",
   "building": "Edificio Central",
@@ -176,7 +206,7 @@ Ejemplo solo virtual (sin sede física):
 {
   "name": "Introduccion Web",
   "credits": 3,
-  "semesterNumber": 1,
+  "quarterNumber": 1,
   "careerId": "career_uuid",
   "modality": "VIRTUAL"
 }
@@ -206,10 +236,8 @@ Una misma materia puede tener **varios bloques** (ej. lunes 08:00–10:00 y vier
 
 ### Endpoints
 
-- `GET /subjects/:subjectId/schedules` (JWT): lista horarios de esa materia.
-- `POST /subjects/:subjectId/schedules` (JWT + ADMIN): crea un bloque.
-- `PATCH /subjects/:subjectId/schedules/:scheduleId` (JWT + ADMIN): actualiza un bloque.
-- `DELETE /subjects/:subjectId/schedules/:scheduleId` (JWT + ADMIN): elimina un bloque.
+- `GET /subjects/:subjectId/schedules` (JWT): admin o dueño del plan al que pertenece la materia.
+- `POST` / `PATCH` / `DELETE` … (JWT): admin o **dueño** de la carrera de esa materia.
 
 Body `POST` / campos en `PATCH` (partial):
 
@@ -230,13 +258,16 @@ Al borrar una materia, sus horarios se eliminan en cascada.
 
 ## Subject Teachers
 
-- `GET /subject-teachers` (JWT)
-- `GET /subject-teachers/:id` (JWT)
-- `POST /subject-teachers` (JWT + ADMIN)
-- `PATCH /subject-teachers/:id` (JWT + ADMIN)
-- `DELETE /subject-teachers/:id` (JWT + ADMIN)
+Relación entre una **materia** y un **profesor** (el profesor sigue siendo dado de alta por admin en `GET /teachers` / catálogo).
 
-Body create/update:
+- `GET /subject-teachers` (**solo ADMIN**): todas las asignaciones.
+- `POST /subject-teachers` (**ADMIN**): asignar en cualquier materia.
+- `POST /subject-teachers/me` (**STUDENT**): asignas un profesor a **tu** materia (`subjectId` de una carrera **creada por ti**). Body igual que abajo.
+- `GET /subject-teachers/me` (**STUDENT**): listado de asignaciones donde la materia es de **tus** carreras.
+- `GET /subject-teachers/:id` (JWT): admin; estudiante solo si esa fila es de una materia **suya** (dueño del plan).
+- `PATCH /subject-teachers/:id` / `DELETE …` (JWT): admin; estudiante solo sobre asignaciones de **sus** materias. Si el estudiante cambia `subjectId` en el PATCH, la nueva materia también debe ser suya.
+
+Body `POST` / `POST …/me` / `PATCH`:
 
 ```json
 {
@@ -245,10 +276,13 @@ Body create/update:
 }
 ```
 
+No puede repetirse el mismo par `subjectId` + `teacherId` (error **409** si ya existe).
+
 ## User Careers
 
-- `POST /user-careers/me` (JWT, estudiante/usuario autenticado)
-- `GET /user-careers/:id` (JWT + ADMIN)
+- `POST /user-careers/me` (**STUDENT**): elige o cambia carrera activa; `careerId` debe ser una carrera **creada por ti**. Si ya tenías inscripción, se **actualiza** (no falla por duplicado).
+- `GET /user-careers/me` (**STUDENT**): tu `UserCareer` actual con carrera y semestres.
+- `GET /user-careers/:id` (JWT): **ADMIN** cualquiera; estudiante solo si el `UserCareer` es **suyo** (`userId`).
 - `GET /user-careers` (JWT + ADMIN)
 - `GET /user-careers/user/:userId` (JWT + ADMIN)
 - `POST /user-careers` (JWT + ADMIN)

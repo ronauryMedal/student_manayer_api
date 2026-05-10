@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -15,7 +16,6 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateSubjectScheduleDto } from './dto/create-subject-schedule.dto';
@@ -32,43 +32,66 @@ export class SubjectSchedulesController {
   @ApiOperation({ summary: 'Listar bloques horarios de una materia' })
   @ApiParam({ name: 'subjectId', description: 'ID de la materia' })
   @Get()
-  findBySubject(@Param('subjectId') subjectId: string) {
-    return this.subjectSchedulesService.findBySubject(subjectId);
+  findBySubject(
+    @Param('subjectId') subjectId: string,
+    @Req() req: { user?: { id?: string; role?: Role } },
+  ) {
+    return this.subjectSchedulesService.findBySubject(subjectId, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
-  @ApiOperation({ summary: 'Agregar un bloque horario a la materia' })
+  @ApiOperation({
+    summary: 'Agregar un bloque horario',
+    description: 'Admin o dueño del plan (carrera) al que pertenece la materia.',
+  })
   @ApiParam({ name: 'subjectId', description: 'ID de la materia' })
   @Post()
-  @Roles(Role.ADMIN)
   create(
     @Param('subjectId') subjectId: string,
     @Body() dto: CreateSubjectScheduleDto,
+    @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.subjectSchedulesService.create(subjectId, dto);
+    return this.subjectSchedulesService.create(subjectId, dto, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
   @ApiOperation({ summary: 'Actualizar un bloque horario' })
   @ApiParam({ name: 'subjectId', description: 'ID de la materia' })
   @ApiParam({ name: 'scheduleId', description: 'ID del horario' })
   @Patch(':scheduleId')
-  @Roles(Role.ADMIN)
   update(
     @Param('subjectId') subjectId: string,
     @Param('scheduleId') scheduleId: string,
     @Body() dto: UpdateSubjectScheduleDto,
+    @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.subjectSchedulesService.update(subjectId, scheduleId, dto);
+    return this.subjectSchedulesService.update(
+      subjectId,
+      scheduleId,
+      dto,
+      {
+        id: req.user?.id as string,
+        role: req.user?.role as Role,
+      },
+    );
   }
 
   @ApiOperation({ summary: 'Eliminar un bloque horario' })
   @ApiParam({ name: 'subjectId', description: 'ID de la materia' })
   @ApiParam({ name: 'scheduleId', description: 'ID del horario' })
   @Delete(':scheduleId')
-  @Roles(Role.ADMIN)
   remove(
     @Param('subjectId') subjectId: string,
     @Param('scheduleId') scheduleId: string,
+    @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.subjectSchedulesService.remove(subjectId, scheduleId);
+    return this.subjectSchedulesService.remove(subjectId, scheduleId, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 }

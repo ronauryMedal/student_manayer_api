@@ -1,17 +1,56 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSubjectTeacherDto } from './dto/create-subject-teacher.dto';
 import { UpdateSubjectTeacherDto } from './dto/update-subject-teacher.dto';
+
+const relationInclude = {
+  subject: true,
+  teacher: true,
+} as const;
 
 @Injectable()
 export class SubjectTeachersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createSubjectTeacherDto: CreateSubjectTeacherDto) {
+  private async assertSubjectOwnedByUser(subjectId: string, userId: string) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: subjectId },
+      include: { career: true },
+    });
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+    if (subject.career.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes asignar profesores a materias de carreras que tú creaste',
+      );
+    }
+    return subject;
+  }
+
+  private assertRelationManagedBy(
+    relation: {
+      subject: { career: { ownerUserId: string | null } };
+    },
+    requester: { id: string; role: Role },
+  ) {
+    if (requester.role === Role.ADMIN) {
+      return;
+    }
+    if (relation.subject.career.ownerUserId !== requester.id) {
+      throw new ForbiddenException(
+        'No tienes permiso para gestionar esta asignación',
+      );
+    }
+  }
+
+  private async createInternal(createSubjectTeacherDto: CreateSubjectTeacherDto) {
     const [subject, teacher] = await Promise.all([
       this.prisma.subject.findUnique({
         where: { id: createSubjectTeacherDto.subjectId },
@@ -44,49 +83,78 @@ export class SubjectTeachersService {
 
     return this.prisma.subjectTeacher.create({
       data: createSubjectTeacherDto,
-      include: {
-        subject: true,
-        teacher: true,
-      },
+      include: relationInclude,
     });
   }
 
-  async findAll() {
+  async create(createSubjectTeacherDto: CreateSubjectTeacherDto) {
+    return this.createInternal(createSubjectTeacherDto);
+  }
+
+  async createMine(
+    userId: string,
+    createSubjectTeacherDto: CreateSubjectTeacherDto,
+  ) {
+    await this.assertSubjectOwnedByUser(
+      createSubjectTeacherDto.subjectId,
+      userId,
+    );
+    return this.createInternal(createSubjectTeacherDto);
+  }
+
+  async findAllAdmin() {
     return this.prisma.subjectTeacher.findMany({
-      include: {
-        subject: true,
-        teacher: true,
-      },
+      include: relationInclude,
     });
   }
 
-  async findOne(id: string) {
-    const relation = await this.prisma.subjectTeacher.findUnique({
-      where: { id },
-      include: {
-        subject: true,
-        teacher: true,
-      },
+  async findMine(userId: string) {
+    return this.prisma.subjectTeacher.findMany({
+      where: { subject: { career: { ownerUserId: userId } } },
+      include: relationInclude,
+      orderBy: { id: 'asc' },
     });
+  }
 
-    if (!relation) {
-      throw new NotFoundException('SubjectTeacher relation not found');
-    }
-
+  async findOneForRequester(
+    id: string,
+    requester: { id: string; role: Role },
+  ) {
+    const relation = await this.findOneWithCareerOrThrow(id);
+    this.assertRelationManagedBy(relation, requester);
     return relation;
   }
 
-  async update(id: string, updateSubjectTeacherDto: UpdateSubjectTeacherDto) {
+  private async findOneWithCareerOrThrow(id: string) {
     const relation = await this.prisma.subjectTeacher.findUnique({
       where: { id },
+      include: {
+        subject: { include: { career: true } },
+        teacher: true,
+      },
     });
-
     if (!relation) {
       throw new NotFoundException('SubjectTeacher relation not found');
     }
+    return relation;
+  }
 
-    const targetSubjectId = updateSubjectTeacherDto.subjectId ?? relation.subjectId;
-    const targetTeacherId = updateSubjectTeacherDto.teacherId ?? relation.teacherId;
+  async updateForRequester(
+    id: string,
+    updateSubjectTeacherDto: UpdateSubjectTeacherDto,
+    requester: { id: string; role: Role },
+  ) {
+    const relation = await this.findOneWithCareerOrThrow(id);
+    this.assertRelationManagedBy(relation, requester);
+
+    const targetSubjectId =
+      updateSubjectTeacherDto.subjectId ?? relation.subjectId;
+    const targetTeacherId =
+      updateSubjectTeacherDto.teacherId ?? relation.teacherId;
+
+    if (requester.role === Role.STUDENT) {
+      await this.assertSubjectOwnedByUser(targetSubjectId, requester.id);
+    }
 
     const [subject, teacher] = await Promise.all([
       this.prisma.subject.findUnique({
@@ -122,21 +190,16 @@ export class SubjectTeachersService {
     return this.prisma.subjectTeacher.update({
       where: { id },
       data: updateSubjectTeacherDto,
-      include: {
-        subject: true,
-        teacher: true,
-      },
+      include: relationInclude,
     });
   }
 
-  async remove(id: string) {
-    const relation = await this.prisma.subjectTeacher.findUnique({
-      where: { id },
-    });
-
-    if (!relation) {
-      throw new NotFoundException('SubjectTeacher relation not found');
-    }
+  async removeForRequester(
+    id: string,
+    requester: { id: string; role: Role },
+  ) {
+    const relation = await this.findOneWithCareerOrThrow(id);
+    this.assertRelationManagedBy(relation, requester);
 
     return this.prisma.subjectTeacher.delete({
       where: { id },

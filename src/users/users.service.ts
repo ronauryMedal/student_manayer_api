@@ -119,6 +119,7 @@ export class UsersService {
           career: {
             id: userCareer.career.id,
             name: userCareer.career.name,
+            institution: userCareer.career.institution,
             totalCredits,
             totalSemester: userCareer.career.totalSemester,
           },

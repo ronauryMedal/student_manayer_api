@@ -1,5 +1,5 @@
 import { SubjectModality } from '@prisma/client';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
@@ -19,9 +19,14 @@ export class CreateSubjectDto {
   @Min(1)
   credits: number;
 
+  @ApiProperty({
+    description: 'Cuatrimestre (período) en el plan de la carrera',
+    example: 1,
+    minimum: 1,
+  })
   @IsInt()
   @Min(1)
-  semesterNumber: number;
+  quarterNumber: number;
 
   @IsEnum(SubjectModality)
   @IsOptional()

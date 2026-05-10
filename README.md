@@ -88,8 +88,12 @@ El contenedor de la API **no** aplica migraciones al arrancar; hay que ejecutar 
 ### Materias: modalidad e inscripción del estudiante
 
 - Cada **materia** (`Subject`) tiene una **modalidad**: presencial (`IN_PERSON`), virtual (`VIRTUAL`) o híbrida (`HYBRID`). Si es presencial o híbrida, debe llevar **edificio** (`building`), **sección** (`section`) y **número de curso** (`courseNumber`); en virtual esos campos quedan vacíos. Detalle en `docs/frontend-api.md` (Subjects).
-- El **estudiante** elige su carrera con `POST /user-careers/me` y luego puede registrar sus materias del plan con `POST /user-approved-subjects/me` (solo materias de esa carrera). Ver la misma guía para rutas y cuerpos de ejemplo.
-- **Varios horarios por materia** (ej. lunes 8–10 y viernes 18–20): modelo `SubjectSchedule` y rutas bajo `GET/POST/PATCH/DELETE /subjects/:subjectId/schedules` (detalle en `docs/frontend-api.md`). Tras desplegar el esquema, aplica también la migración `20260209140000_subject_schedules` con `docker compose exec api npx prisma migrate deploy`.
+- **Carreras e institución**: cada carrera incluye **`institution`**; el estudiante crea **sus** planes con `POST /careers/me` y solo ve los que creó (`GET /careers/me`). El admin mantiene un catálogo opcional con `POST /careers` (`GET /careers` solo admin).
+- **Materias y cuatrimestre**: el estudiante agrega materias a **sus** carreras con `POST /subjects/me` usando **`quarterNumber`** (cuatrimestre en el plan). Lista con `GET /subjects/me`.
+- Inscripción: `POST /user-careers/me` solo admite `careerId` de carreras **creadas por el usuario**. Puede consultar `GET /user-careers/me`. Luego `POST /user-approved-subjects/me` para marcar materias en la malla (solo planes propios).
+- **Varios horarios por materia**: `SubjectSchedule`; el dueño del plan puede gestionar horarios de sus materias igual que el admin en las suyas. Ver `docs/frontend-api.md`.
+- **Profesor en la materia**: el estudiante puede enlazar un profesor del catálogo a sus materias con `POST /subject-teachers/me` (ver guía frontend).
+- Tras cambios de esquema: `docker compose exec api npx prisma migrate deploy` (incluye migraciones `subject_schedules`, `subject_campus_fields`, `career_institution_owner_quarter`, etc.).
 
 ### 3.1) Cargar datos de prueba (seed)
 

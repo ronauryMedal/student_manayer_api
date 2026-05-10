@@ -1,12 +1,28 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SubjectModality } from '@prisma/client';
+import { Role, SubjectModality } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
+
+const subjectInclude = {
+  career: true,
+  schedules: {
+    orderBy: [
+      { weekday: 'asc' as const },
+      { startTime: 'asc' as const },
+    ],
+  },
+  teachers: {
+    include: {
+      teacher: true,
+    },
+  },
+};
 
 @Injectable()
 export class SubjectsService {
@@ -48,7 +64,52 @@ export class SubjectsService {
     }
   }
 
-  async create(createSubjectDto: CreateSubjectDto) {
+  private async assertQuarterInCareerPlan(
+    careerId: string,
+    quarterNumber: number,
+  ) {
+    const career = await this.prisma.career.findUnique({
+      where: { id: careerId },
+    });
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+    if (quarterNumber < 1 || quarterNumber > career.totalSemester) {
+      throw new BadRequestException(
+        `quarterNumber debe estar entre 1 y ${career.totalSemester} (cuatrimestres del plan)`,
+      );
+    }
+  }
+
+  private assertSubjectReadableBy(
+    subject: { career: { ownerUserId: string | null } },
+    requester: { id: string; role: Role },
+  ) {
+    if (requester.role === Role.ADMIN) {
+      return;
+    }
+    if (subject.career.ownerUserId !== requester.id) {
+      throw new ForbiddenException(
+        'Solo puedes ver materias de carreras que tú creaste',
+      );
+    }
+  }
+
+  private assertSubjectMutableBy(
+    subject: { career: { ownerUserId: string | null } },
+    requester: { id: string; role: Role },
+  ) {
+    if (requester.role === Role.ADMIN) {
+      return;
+    }
+    if (subject.career.ownerUserId !== requester.id) {
+      throw new ForbiddenException(
+        'Solo puedes modificar materias de carreras que tú creaste',
+      );
+    }
+  }
+
+  private async createInternal(createSubjectDto: CreateSubjectDto) {
     const modality =
       createSubjectDto.modality ?? SubjectModality.IN_PERSON;
     const building = this.trimOrUndefined(createSubjectDto.building);
@@ -61,6 +122,11 @@ export class SubjectsService {
       courseNumber: courseNumber ?? null,
     });
 
+    await this.assertQuarterInCareerPlan(
+      createSubjectDto.careerId,
+      createSubjectDto.quarterNumber,
+    );
+
     const campusData =
       modality === SubjectModality.VIRTUAL
         ? { building: null, section: null, courseNumber: null }
@@ -70,65 +136,98 @@ export class SubjectsService {
       data: {
         name: createSubjectDto.name,
         credits: createSubjectDto.credits,
-        semesterNumber: createSubjectDto.semesterNumber,
+        quarterNumber: createSubjectDto.quarterNumber,
         careerId: createSubjectDto.careerId,
         modality,
         ...campusData,
       },
-      include: {
-        career: true,
-        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
-        teachers: {
-          include: {
-            teacher: true,
-          },
-        },
-      },
+      include: subjectInclude,
     });
+  }
+
+  async create(createSubjectDto: CreateSubjectDto) {
+    return this.createInternal(createSubjectDto);
+  }
+
+  async createMine(userId: string, createSubjectDto: CreateSubjectDto) {
+    const career = await this.prisma.career.findUnique({
+      where: { id: createSubjectDto.careerId },
+    });
+    if (!career) {
+      throw new NotFoundException('Career not found');
+    }
+    if (career.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes agregar materias a carreras que tú creaste',
+      );
+    }
+    return this.createInternal(createSubjectDto);
   }
 
   async findAll() {
     return this.prisma.subject.findMany({
-      include: {
-        career: true,
-        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
-        teachers: {
-          include: {
-            teacher: true,
-          },
-        },
-      },
+      include: subjectInclude,
+      orderBy: [{ careerId: 'asc' }, { quarterNumber: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async findOne(id: string) {
+  async findMine(ownerUserId: string) {
+    return this.prisma.subject.findMany({
+      where: { career: { ownerUserId } },
+      include: subjectInclude,
+      orderBy: [{ careerId: 'asc' }, { quarterNumber: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async findOneForRequester(
+    id: string,
+    requester: { id: string; role: Role },
+  ) {
     const subject = await this.prisma.subject.findUnique({
       where: { id },
-      include: {
-        career: true,
-        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
-        teachers: {
-          include: {
-            teacher: true,
-          },
-        },
-      },
+      include: subjectInclude,
+    });
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+    this.assertSubjectReadableBy(subject, requester);
+    return subject;
+  }
+
+  async updateForRequester(
+    id: string,
+    updateSubjectDto: UpdateSubjectDto,
+    requester: { id: string; role: Role },
+  ) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id },
+      include: { career: true },
     });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
-    return subject;
-  }
+    this.assertSubjectMutableBy(subject, requester);
 
-  async update(id: string, updateSubjectDto: UpdateSubjectDto) {
-    const subject = await this.prisma.subject.findUnique({
-      where: { id },
-    });
-
-    if (!subject) {
-      throw new NotFoundException('Subject not found');
+    const targetCareerId =
+      updateSubjectDto.careerId ?? subject.careerId;
+    if (
+      requester.role === Role.STUDENT &&
+      updateSubjectDto.careerId &&
+      updateSubjectDto.careerId !== subject.careerId
+    ) {
+      const newCareer = await this.prisma.career.findUnique({
+        where: { id: updateSubjectDto.careerId },
+      });
+      if (!newCareer) {
+        throw new NotFoundException('Career not found');
+      }
+      if (newCareer.ownerUserId !== requester.id) {
+        throw new ForbiddenException(
+          'No puedes mover materias a una carrera que no es tuya',
+        );
+      }
     }
 
     const modality =
@@ -151,6 +250,10 @@ export class SubjectsService {
       section,
       courseNumber,
     });
+
+    const quarterNumber =
+      updateSubjectDto.quarterNumber ?? subject.quarterNumber;
+    await this.assertQuarterInCareerPlan(targetCareerId, quarterNumber);
 
     const campusPatch =
       modality === SubjectModality.VIRTUAL
@@ -180,26 +283,24 @@ export class SubjectsService {
         ...(updateSubjectDto.modality !== undefined ? { modality } : {}),
         ...campusPatch,
       },
-      include: {
-        career: true,
-        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
-        teachers: {
-          include: {
-            teacher: true,
-          },
-        },
-      },
+      include: subjectInclude,
     });
   }
 
-  async remove(id: string) {
+  async removeForRequester(
+    id: string,
+    requester: { id: string; role: Role },
+  ) {
     const subject = await this.prisma.subject.findUnique({
       where: { id },
+      include: { career: true },
     });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
+
+    this.assertSubjectMutableBy(subject, requester);
 
     return this.prisma.subject.delete({
       where: { id },

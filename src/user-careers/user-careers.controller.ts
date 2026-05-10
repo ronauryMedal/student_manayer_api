@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -36,7 +36,13 @@ export class UserCareersController {
     );
   }
 
+  @ApiOperation({
+    summary: 'Activar / cambiar mi carrera',
+    description:
+      'Solo puedes elegir entre carreras que tú creaste (owner). Actualiza la inscripción si ya tenías otra.',
+  })
   @Post('me')
+  @Roles(Role.STUDENT)
   selectMyCareer(
     @Body() selectOwnCareerDto: SelectOwnCareerDto,
     @Req() req: { user?: { id?: string } },
@@ -45,7 +51,15 @@ export class UserCareersController {
       req.user?.id as string,
       selectOwnCareerDto.careerId,
       selectOwnCareerDto.currentSemester,
+      { requireOwnedCareer: true },
     );
+  }
+
+  @ApiOperation({ summary: 'Mi inscripción actual a carrera' })
+  @Get('me')
+  @Roles(Role.STUDENT)
+  findMine(@Req() req: { user?: { id?: string } }) {
+    return this.userCareersService.findMine(req.user?.id as string);
   }
 
   @Get()
@@ -61,8 +75,15 @@ export class UserCareersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userCareersService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string; role?: Role } },
+  ) {
+    return this.userCareersService.findOneForRequester(
+      id,
+      req.user?.id as string,
+      req.user?.role as Role,
+    );
   }
 
   @Patch(':id')

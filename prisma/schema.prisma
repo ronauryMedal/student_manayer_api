@@ -63,6 +63,7 @@ enum NotificationType {
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
 
+  ownedCareers   Career[] @relation("CareerOwner")
   careers        UserCareer[]
   tasks          Task[]
   califications         calification[]
@@ -76,14 +77,22 @@ enum NotificationType {
 model Career {
   id        String   @id @default(uuid())
   name      String
+  /** Institución (misma carrera puede repetirse con distinto nombre de institución) */
+  institution String
   description String
   totalCredits Int
+  /** Cantidad de cuatrimestres / períodos del plan */
   totalSemester Int
+  /** Si es null, carrera de catálogo creada por admin; si coincide con User.id, es plan personal del estudiante */
+  ownerUserId String?
+  owner       User?    @relation("CareerOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+
   subjects Subject[]
   userCareers  UserCareer[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
+  @@index([ownerUserId])
 }
 
 model UserCareer {
@@ -111,7 +120,8 @@ model Subject {
   id              String @id @default(uuid())
   name            String
   credits         Int
-  semesterNumber  Int
+  /** Cuatrimestre (o período) en el que cursa la materia dentro del plan */
+  quarterNumber   Int
   modality        SubjectModality @default(IN_PERSON)
   /** Obligatorio si modality es IN_PERSON o HYBRID; ignorado en VIRTUAL */
   building        String?

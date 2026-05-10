@@ -1,9 +1,10 @@
 import {
   BadRequestException,
-  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -37,10 +38,23 @@ export class UserCareersService {
     return relation;
   }
 
+  async findOneForRequester(
+    id: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    const relation = await this.findOne(id);
+    if (requesterRole !== Role.ADMIN && relation.userId !== requesterId) {
+      throw new ForbiddenException();
+    }
+    return relation;
+  }
+
   async enrollUserInCareer(
     userId: string,
     careerId: string,
     currentSemester: number,
+    options?: { requireOwnedCareer?: boolean },
   ) {
     const [user, career] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
@@ -55,6 +69,14 @@ export class UserCareersService {
       throw new NotFoundException('Career not found');
     }
 
+    if (options?.requireOwnedCareer) {
+      if (career.ownerUserId !== userId) {
+        throw new ForbiddenException(
+          'Solo puedes inscribirte en carreras que tú creaste',
+        );
+      }
+    }
+
     if (currentSemester > career.totalSemester) {
       throw new BadRequestException(
         `Current semester cannot exceed ${career.totalSemester}`,
@@ -65,10 +87,21 @@ export class UserCareersService {
       where: { userId },
     });
 
+    const include = {
+      user: true,
+      career: true,
+      semesters: true,
+    } as const;
+
     if (existingRelation) {
-      throw new ConflictException(
-        'User already has a career assigned. Only admin can change it.',
-      );
+      return this.prisma.userCareer.update({
+        where: { id: existingRelation.id },
+        data: {
+          careerId,
+          currentSemester,
+        },
+        include,
+      });
     }
 
     return this.prisma.userCareer.create({
@@ -77,6 +110,13 @@ export class UserCareersService {
         careerId,
         currentSemester,
       },
+      include,
+    });
+  }
+
+  async findMine(userId: string) {
+    return this.prisma.userCareer.findFirst({
+      where: { userId },
       include: {
         user: true,
         career: true,

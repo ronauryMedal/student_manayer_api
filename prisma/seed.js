@@ -44,12 +44,25 @@ async function main() {
     },
   });
 
+  await prisma.career.create({
+    data: {
+      name: 'Ingenieria de Software (catalogo admin)',
+      institution: 'Universidad Demo',
+      description: 'Plantilla de ejemplo sin dueno; solo admin la lista en GET /careers',
+      totalCredits: 240,
+      totalSemester: 12,
+      ownerUserId: null,
+    },
+  });
+
   const career = await prisma.career.create({
     data: {
       name: 'Ingenieria de Software',
+      institution: 'Universidad Demo',
       description: 'Carrera orientada al desarrollo de software',
       totalCredits: 240,
       totalSemester: 12,
+      ownerUserId: student.id,
     },
   });
 
@@ -57,7 +70,7 @@ async function main() {
     data: {
       name: 'Programacion I',
       credits: 4,
-      semesterNumber: 1,
+      quarterNumber: 1,
       careerId: career.id,
       building: 'Edificio Central',
       section: 'A',
@@ -88,7 +101,7 @@ async function main() {
     data: {
       name: 'Base de Datos I',
       credits: 4,
-      semesterNumber: 2,
+      quarterNumber: 2,
       careerId: career.id,
       building: 'Edificio Tecnologia',
       section: 'B',

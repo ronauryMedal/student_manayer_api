@@ -6,13 +6,15 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { AssignMyTeacherDto } from './dto/assign-my-teacher.dto';
 import { CreateSubjectTeacherDto } from './dto/create-subject-teacher.dto';
 import { UpdateSubjectTeacherDto } from './dto/update-subject-teacher.dto';
 import { SubjectTeachersService } from './subject-teachers.service';
@@ -30,28 +32,68 @@ export class SubjectTeachersController {
     return this.subjectTeachersService.create(createSubjectTeacherDto);
   }
 
+  @ApiOperation({
+    summary: 'Asignar profesor a mi materia',
+    description:
+      'La materia debe pertenecer a una carrera creada por ti. El profesor debe existir en el catálogo (creado por admin).',
+  })
+  @Post('me')
+  @Roles(Role.STUDENT)
+  assignMine(
+    @Body() dto: AssignMyTeacherDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.subjectTeachersService.createMine(req.user?.id as string, dto);
+  }
+
   @Get()
+  @Roles(Role.ADMIN)
   findAll() {
-    return this.subjectTeachersService.findAll();
+    return this.subjectTeachersService.findAllAdmin();
+  }
+
+  @ApiOperation({ summary: 'Mis asignaciones profesor–materia' })
+  @Get('me')
+  @Roles(Role.STUDENT)
+  findMine(@Req() req: { user?: { id?: string } }) {
+    return this.subjectTeachersService.findMine(req.user?.id as string);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.subjectTeachersService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string; role?: Role } },
+  ) {
+    return this.subjectTeachersService.findOneForRequester(id, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateSubjectTeacherDto: UpdateSubjectTeacherDto,
+    @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.subjectTeachersService.update(id, updateSubjectTeacherDto);
+    return this.subjectTeachersService.updateForRequester(
+      id,
+      updateSubjectTeacherDto,
+      {
+        id: req.user?.id as string,
+        role: req.user?.role as Role,
+      },
+    );
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
-  remove(@Param('id') id: string) {
-    return this.subjectTeachersService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string; role?: Role } },
+  ) {
+    return this.subjectTeachersService.removeForRequester(id, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 }

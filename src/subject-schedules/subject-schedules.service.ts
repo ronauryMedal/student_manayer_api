@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSubjectScheduleDto } from './dto/create-subject-schedule.dto';
 import { UpdateSubjectScheduleDto } from './dto/update-subject-schedule.dto';
@@ -34,9 +36,10 @@ export class SubjectSchedulesService {
     }
   }
 
-  async assertSubjectExists(subjectId: string) {
+  private async loadSubjectWithCareer(subjectId: string) {
     const subject = await this.prisma.subject.findUnique({
       where: { id: subjectId },
+      include: { career: true },
     });
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -44,16 +47,39 @@ export class SubjectSchedulesService {
     return subject;
   }
 
-  async findBySubject(subjectId: string) {
-    await this.assertSubjectExists(subjectId);
+  private assertCanManageSchedules(
+    subject: { career: { ownerUserId: string | null } },
+    requester: { id: string; role: Role },
+  ) {
+    if (requester.role === Role.ADMIN) {
+      return;
+    }
+    if (subject.career.ownerUserId !== requester.id) {
+      throw new ForbiddenException(
+        'Solo puedes gestionar horarios de materias de carreras que tú creaste',
+      );
+    }
+  }
+
+  async findBySubject(
+    subjectId: string,
+    requester: { id: string; role: Role },
+  ) {
+    const subject = await this.loadSubjectWithCareer(subjectId);
+    this.assertCanManageSchedules(subject, requester);
     return this.prisma.subjectSchedule.findMany({
       where: { subjectId },
       orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }],
     });
   }
 
-  async create(subjectId: string, dto: CreateSubjectScheduleDto) {
-    await this.assertSubjectExists(subjectId);
+  async create(
+    subjectId: string,
+    dto: CreateSubjectScheduleDto,
+    requester: { id: string; role: Role },
+  ) {
+    const subject = await this.loadSubjectWithCareer(subjectId);
+    this.assertCanManageSchedules(subject, requester);
     const startTime = this.timeStringToUtcDate(dto.startTime);
     const endTime = this.timeStringToUtcDate(dto.endTime);
     this.assertEndAfterStart(startTime, endTime);
@@ -73,7 +99,11 @@ export class SubjectSchedulesService {
     subjectId: string,
     scheduleId: string,
     dto: UpdateSubjectScheduleDto,
+    requester: { id: string; role: Role },
   ) {
+    const subject = await this.loadSubjectWithCareer(subjectId);
+    this.assertCanManageSchedules(subject, requester);
+
     const existing = await this.prisma.subjectSchedule.findFirst({
       where: { id: scheduleId, subjectId },
     });
@@ -103,7 +133,14 @@ export class SubjectSchedulesService {
     });
   }
 
-  async remove(subjectId: string, scheduleId: string) {
+  async remove(
+    subjectId: string,
+    scheduleId: string,
+    requester: { id: string; role: Role },
+  ) {
+    const subject = await this.loadSubjectWithCareer(subjectId);
+    this.assertCanManageSchedules(subject, requester);
+
     const existing = await this.prisma.subjectSchedule.findFirst({
       where: { id: scheduleId, subjectId },
     });

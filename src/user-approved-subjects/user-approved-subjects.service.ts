@@ -185,10 +185,17 @@ export class UserApprovedSubjectsService {
 
     const subject = await this.prisma.subject.findUnique({
       where: { id: subjectId },
+      include: { career: true },
     });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
+    }
+
+    if (subject.career.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes registrar materias de planes (carreras) que tú creaste',
+      );
     }
 
     if (subject.careerId !== userCareer.careerId) {
