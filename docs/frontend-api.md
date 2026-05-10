@@ -143,6 +143,18 @@ Valores permitidos (misma convención que en base de datos / Prisma):
 
 Si no envías `modality` al crear una materia, el backend usa **`IN_PERSON`** por defecto.
 
+### Presencial / híbrida: edificio, sección y número de curso
+
+Si `modality` es **`IN_PERSON`** o **`HYBRID`**, son **obligatorios** (strings no vacíos tras quitar espacios):
+
+| Campo           | Uso típico                          |
+|-----------------|-------------------------------------|
+| `building`      | Edificio donde se imparte           |
+| `section`       | Sección o grupo (ej. `A`, `01`)     |
+| `courseNumber`  | Número o código del curso ofertado  |
+
+Si `modality` es **`VIRTUAL`**, esos tres campos se guardan como `null` y no aplican.
+
 Body create/update:
 
 ```json
@@ -151,11 +163,28 @@ Body create/update:
   "credits": 4,
   "semesterNumber": 1,
   "careerId": "career_uuid",
+  "modality": "HYBRID",
+  "building": "Edificio Central",
+  "section": "A",
+  "courseNumber": "PROG-2026-01"
+}
+```
+
+Ejemplo solo virtual (sin sede física):
+
+```json
+{
+  "name": "Introduccion Web",
+  "credits": 3,
+  "semesterNumber": 1,
+  "careerId": "career_uuid",
   "modality": "VIRTUAL"
 }
 ```
 
-`modality` es opcional en create y en update (partial).
+`modality`, `building`, `section` y `courseNumber` son opcionales en **update** (partial); el servidor valida el **estado final** (modalidad + datos de sede) tras mezclar con lo ya guardado.
+
+`modality` es opcional en create (por defecto presencial, con lo cual debes enviar edificio, sección y número de curso).
 
 Las respuestas de `GET /subjects`, `GET /subjects/:id` y los updates incluyen un arreglo **`schedules`**: bloques horarios ordenados por día y hora de inicio (puede estar vacío).
 

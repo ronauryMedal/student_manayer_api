@@ -59,6 +59,9 @@ async function main() {
       credits: 4,
       semesterNumber: 1,
       careerId: career.id,
+      building: 'Edificio Central',
+      section: 'A',
+      courseNumber: 'PROG-2026-01',
     },
   });
 
@@ -87,6 +90,9 @@ async function main() {
       credits: 4,
       semesterNumber: 2,
       careerId: career.id,
+      building: 'Edificio Tecnologia',
+      section: 'B',
+      courseNumber: 'BD-2026-02',
     },
   });
 

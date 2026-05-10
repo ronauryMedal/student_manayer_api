@@ -87,7 +87,7 @@ El contenedor de la API **no** aplica migraciones al arrancar; hay que ejecutar 
 
 ### Materias: modalidad e inscripción del estudiante
 
-- Cada **materia** (`Subject`) tiene una **modalidad**: presencial (`IN_PERSON`), virtual (`VIRTUAL`) o híbrida (`HYBRID`). Detalle de campos y endpoints en `docs/frontend-api.md` (sección Subjects y User Approved Subjects).
+- Cada **materia** (`Subject`) tiene una **modalidad**: presencial (`IN_PERSON`), virtual (`VIRTUAL`) o híbrida (`HYBRID`). Si es presencial o híbrida, debe llevar **edificio** (`building`), **sección** (`section`) y **número de curso** (`courseNumber`); en virtual esos campos quedan vacíos. Detalle en `docs/frontend-api.md` (Subjects).
 - El **estudiante** elige su carrera con `POST /user-careers/me` y luego puede registrar sus materias del plan con `POST /user-approved-subjects/me` (solo materias de esa carrera). Ver la misma guía para rutas y cuerpos de ejemplo.
 - **Varios horarios por materia** (ej. lunes 8–10 y viernes 18–20): modelo `SubjectSchedule` y rutas bajo `GET/POST/PATCH/DELETE /subjects/:subjectId/schedules` (detalle en `docs/frontend-api.md`). Tras desplegar el esquema, aplica también la migración `20260209140000_subject_schedules` con `docker compose exec api npx prisma migrate deploy`.
 

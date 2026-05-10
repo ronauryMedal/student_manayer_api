@@ -113,6 +113,12 @@ model Subject {
   credits         Int
   semesterNumber  Int
   modality        SubjectModality @default(IN_PERSON)
+  /** Obligatorio si modality es IN_PERSON o HYBRID; ignorado en VIRTUAL */
+  building        String?
+  /** Sección / grupo (ej. A, 01) */
+  section         String?
+  /** Número o código del curso ofertado */
+  courseNumber    String?
   careerId        String
 
   career   Career   @relation(fields: [careerId], references: [id])
