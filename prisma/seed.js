@@ -1,4 +1,10 @@
-const { PrismaClient, Role, GradeType, NotificationType } = require('@prisma/client');
+const {
+  PrismaClient,
+  Role,
+  GradeType,
+  NotificationType,
+  Weekday,
+} = require('@prisma/client');
 const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
@@ -12,6 +18,7 @@ async function main() {
   await prisma.task.deleteMany();
   await prisma.userApprovedSubject.deleteMany();
   await prisma.subjectTeacher.deleteMany();
+  await prisma.subjectSchedule.deleteMany();
   await prisma.userSemester.deleteMany();
   await prisma.userCareer.deleteMany();
   await prisma.subject.deleteMany();
@@ -53,6 +60,25 @@ async function main() {
       semesterNumber: 1,
       careerId: career.id,
     },
+  });
+
+  await prisma.subjectSchedule.createMany({
+    data: [
+      {
+        subjectId: subject1.id,
+        weekday: Weekday.MONDAY,
+        startTime: new Date(Date.UTC(1970, 0, 1, 8, 0, 0, 0)),
+        endTime: new Date(Date.UTC(1970, 0, 1, 10, 0, 0, 0)),
+        room: 'Aula 101',
+      },
+      {
+        subjectId: subject1.id,
+        weekday: Weekday.FRIDAY,
+        startTime: new Date(Date.UTC(1970, 0, 1, 18, 0, 0, 0)),
+        endTime: new Date(Date.UTC(1970, 0, 1, 20, 0, 0, 0)),
+        room: 'Lab 2',
+      },
+    ],
   });
 
   const subject2 = await prisma.subject.create({

@@ -1,5 +1,4 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Role } from "@prisma/client";
 import { IsString, IsNotEmpty, IsEmail } from "class-validator";
 
 

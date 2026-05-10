@@ -8,13 +8,15 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
-
+  app.enableCors();
+ 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Study Manager API')
     .setDescription('Documentacion de la API para Study Manager')
     .setVersion('1.0')
     .addBearerAuth()
     .addSecurityRequirements('bearer')
+    
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

@@ -10,6 +10,15 @@ export class SubjectsService {
   async create(createSubjectDto: CreateSubjectDto) {
     return this.prisma.subject.create({
       data: createSubjectDto,
+      include: {
+        career: true,
+        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
+        teachers: {
+          include: {
+            teacher: true,
+          },
+        },
+      },
     });
   }
 
@@ -17,6 +26,7 @@ export class SubjectsService {
     return this.prisma.subject.findMany({
       include: {
         career: true,
+        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
         teachers: {
           include: {
             teacher: true,
@@ -31,6 +41,7 @@ export class SubjectsService {
       where: { id },
       include: {
         career: true,
+        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
         teachers: {
           include: {
             teacher: true,
@@ -58,6 +69,15 @@ export class SubjectsService {
     return this.prisma.subject.update({
       where: { id },
       data: updateSubjectDto,
+      include: {
+        career: true,
+        schedules: { orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }] },
+        teachers: {
+          include: {
+            teacher: true,
+          },
+        },
+      },
     });
   }
 

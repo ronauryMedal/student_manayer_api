@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateUserApprovedSubjectDto {
   @IsString()
@@ -10,5 +10,6 @@ export class CreateUserApprovedSubjectDto {
   subjectId: string;
 
   @IsDateString()
-  approvedAt: string;
+  @IsOptional()
+  approvedAt?: string;
 }

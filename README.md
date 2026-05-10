@@ -67,6 +67,8 @@ Esto levanta:
 
 ### 3) Ejecutar migraciones Prisma
 
+En este proyecto el `DATABASE_URL` del `.env` usa el host **`db`** (nombre del servicio en Docker). Ese nombre solo resuelve **dentro de la red de Compose**, por eso las migraciones deben ejecutarse **dentro del contenedor `api`** (o usar una URL con `localhost` si ejecutas Prisma desde tu máquina).
+
 Si ya tienes migraciones creadas:
 
 ```bash
@@ -78,6 +80,16 @@ Si es la primera migracion del proyecto:
 ```bash
 docker compose exec api npx prisma migrate dev --name init
 ```
+
+**Prisma desde el host (Cursor / terminal local):** si `npx prisma migrate` falla con *Can't reach database server at `db:5432`*, o bien levanta solo la base con `docker compose up -d db` y usa en esa sesión una `DATABASE_URL` equivalente apuntando a `localhost:5432`, o ejecuta siempre los comandos Prisma con `docker compose exec api ...` como arriba.
+
+El contenedor de la API **no** aplica migraciones al arrancar; hay que ejecutar `migrate deploy` (o tu flujo con `db push`) tras cambios en el esquema.
+
+### Materias: modalidad e inscripción del estudiante
+
+- Cada **materia** (`Subject`) tiene una **modalidad**: presencial (`IN_PERSON`), virtual (`VIRTUAL`) o híbrida (`HYBRID`). Detalle de campos y endpoints en `docs/frontend-api.md` (sección Subjects y User Approved Subjects).
+- El **estudiante** elige su carrera con `POST /user-careers/me` y luego puede registrar sus materias del plan con `POST /user-approved-subjects/me` (solo materias de esa carrera). Ver la misma guía para rutas y cuerpos de ejemplo.
+- **Varios horarios por materia** (ej. lunes 8–10 y viernes 18–20): modelo `SubjectSchedule` y rutas bajo `GET/POST/PATCH/DELETE /subjects/:subjectId/schedules` (detalle en `docs/frontend-api.md`). Tras desplegar el esquema, aplica también la migración `20260209140000_subject_schedules` con `docker compose exec api npx prisma migrate deploy`.
 
 ### 3.1) Cargar datos de prueba (seed)
 

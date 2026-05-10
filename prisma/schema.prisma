@@ -32,6 +32,24 @@ enum GradeType {
   TASK
   PROJECT
 }
+
+enum SubjectModality {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+/** Día de la semana para un bloque de horario de la materia */
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 enum NotificationType {
   TASK_REMINDER
   GENERAL
@@ -94,13 +112,29 @@ model Subject {
   name            String
   credits         Int
   semesterNumber  Int
+  modality        SubjectModality @default(IN_PERSON)
   careerId        String
 
   career   Career   @relation(fields: [careerId], references: [id])
   teachers SubjectTeacher[]
+  schedules SubjectSchedule[]
   tasks    Task[]
   califications   calification[]
   approvedByUsers UserApprovedSubject[]
+}
+
+/** Un bloque horario de una materia (la misma materia puede tener varios: ej. lun 8–10 y vie 18–20). */
+model SubjectSchedule {
+  id        String   @id @default(uuid())
+  subjectId String
+  weekday   Weekday
+  startTime DateTime @db.Time(0)
+  endTime   DateTime @db.Time(0)
+  room      String?
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
 }
 
 model UserApprovedSubject {
