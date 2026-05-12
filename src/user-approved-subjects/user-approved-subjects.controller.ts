@@ -34,41 +34,31 @@ export class UserApprovedSubjectsController {
     return this.userApprovedSubjectsService.create(createUserApprovedSubjectDto);
   }
 
-  @ApiOperation({ summary: 'Listar mis materias (estudiante)' })
   @Get('me')
   @Roles(Role.STUDENT)
   findMine(@Req() req: { user?: { id?: string } }) {
     return this.userApprovedSubjectsService.findMine(req.user?.id as string);
   }
 
-  @ApiOperation({
-    summary: 'Agregar una materia de mi carrera (estudiante)',
-    description:
-      'La materia debe pertenecer a la misma carrera en la que estás inscrito.',
-  })
   @Post('me')
   @Roles(Role.STUDENT)
-  addMySubject(
+  enrollMine(
     @Body() dto: AddMySubjectDto,
     @Req() req: { user?: { id?: string } },
   ) {
-    return this.userApprovedSubjectsService.addMySubject(
+    return this.userApprovedSubjectsService.enrollMine(
       req.user?.id as string,
       dto.subjectId,
     );
   }
 
-  @ApiOperation({ summary: 'Quitar una de mis materias (estudiante)' })
   @Delete('me/:id')
   @Roles(Role.STUDENT)
   removeMine(
     @Param('id') id: string,
     @Req() req: { user?: { id?: string } },
   ) {
-    return this.userApprovedSubjectsService.removeMine(
-      req.user?.id as string,
-      id,
-    );
+    return this.userApprovedSubjectsService.removeMine(req.user?.id as string, id);
   }
 
   @Get()

@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { CreateMySubjectDto } from './dto/create-my-subject.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { SubjectsService } from './subjects.service';
@@ -31,20 +32,19 @@ export class SubjectsController {
     return this.subjectsService.create(createSubjectDto);
   }
 
-  @ApiOperation({
-    summary: 'Crear materia en mi carrera',
-    description: '`careerId` debe ser una carrera creada por ti (owner).',
-  })
+  @Get('me')
+  @Roles(Role.STUDENT)
+  findMine(@Req() req: { user?: { id?: string } }) {
+    return this.subjectsService.findMine(req.user?.id as string);
+  }
+
   @Post('me')
   @Roles(Role.STUDENT)
   createMine(
-    @Body() createSubjectDto: CreateSubjectDto,
+    @Body() dto: CreateMySubjectDto,
     @Req() req: { user?: { id?: string } },
   ) {
-    return this.subjectsService.createMine(
-      req.user?.id as string,
-      createSubjectDto,
-    );
+    return this.subjectsService.createForStudent(req.user?.id as string, dto);
   }
 
   @Get()

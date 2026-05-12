@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserApprovedSubjectDto } from './dto/create-user-approved-subject.dto';
@@ -155,16 +156,17 @@ export class UserApprovedSubjectsService {
     });
   }
 
+  /** Inscripciones del usuario actual (`GET /user-approved-subjects/me`). */
   async findMine(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
     return this.prisma.userApprovedSubject.findMany({
       where: { userId },
       include: {
         subject: {
           include: {
             career: true,
-            schedules: {
-              orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }],
-            },
           },
         },
       },
@@ -172,15 +174,10 @@ export class UserApprovedSubjectsService {
     });
   }
 
-  async addMySubject(userId: string, subjectId: string) {
-    const userCareer = await this.prisma.userCareer.findFirst({
-      where: { userId },
-    });
-
-    if (!userCareer) {
-      throw new BadRequestException(
-        'Primero debes inscribirte en una carrera antes de agregar materias',
-      );
+  /** Inscribir materia del plan activo (`POST /user-approved-subjects/me`). */
+  async enrollMine(userId: string, subjectId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
     }
 
     const subject = await this.prisma.subject.findUnique({
@@ -194,54 +191,58 @@ export class UserApprovedSubjectsService {
 
     if (subject.career.ownerUserId !== userId) {
       throw new ForbiddenException(
-        'Solo puedes registrar materias de planes (carreras) que tú creaste',
+        'Solo podés inscribirte en materias de tus propias carreras.',
       );
     }
 
-    if (subject.careerId !== userCareer.careerId) {
-      throw new ForbiddenException(
-        'Esta materia no pertenece a la carrera en la que estás inscrito',
-      );
-    }
-
-    const existing = await this.prisma.userApprovedSubject.findFirst({
-      where: { userId, subjectId },
+    const userCareer = await this.prisma.userCareer.findFirst({
+      where: { userId },
     });
 
-    if (existing) {
-      throw new ConflictException('Ya tienes registrada esta materia');
+    if (!userCareer || userCareer.careerId !== subject.careerId) {
+      throw new ForbiddenException(
+        'La materia debe pertenecer a tu carrera activa.',
+      );
+    }
+
+    const dup = await this.prisma.userApprovedSubject.findFirst({
+      where: { userId, subjectId },
+    });
+    if (dup) {
+      throw new ConflictException('Ya estás inscripto en esta materia');
     }
 
     return this.prisma.userApprovedSubject.create({
       data: {
         userId,
         subjectId,
-        approvedAt: new Date(),
       },
       include: {
         subject: {
           include: {
             career: true,
-            schedules: {
-              orderBy: [{ weekday: 'asc' }, { startTime: 'asc' }],
-            },
           },
         },
       },
     });
   }
 
-  async removeMine(userId: string, enrollmentId: string) {
-    const item = await this.prisma.userApprovedSubject.findFirst({
-      where: { id: enrollmentId, userId },
+  /** Baja de inscripción (`DELETE /user-approved-subjects/me/:id`). */
+  async removeMine(userId: string, id: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const item = await this.prisma.userApprovedSubject.findUnique({
+      where: { id },
     });
 
-    if (!item) {
-      throw new NotFoundException('Inscripción a materia no encontrada');
+    if (!item || item.userId !== userId) {
+      throw new NotFoundException('Inscripción no encontrada');
     }
 
     return this.prisma.userApprovedSubject.delete({
-      where: { id: enrollmentId },
+      where: { id },
     });
   }
 }

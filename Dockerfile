@@ -22,6 +22,10 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+COPY docker/entrypoint.sh /entrypoint.sh
+# Windows CRLF en el script rompe el shebang en Linux ("no such file or directory")
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["node", "dist/src/main"]
+ENTRYPOINT ["/entrypoint.sh"]

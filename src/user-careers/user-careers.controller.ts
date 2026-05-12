@@ -51,15 +51,14 @@ export class UserCareersController {
       req.user?.id as string,
       selectOwnCareerDto.careerId,
       selectOwnCareerDto.currentSemester,
-      { requireOwnedCareer: true },
+      { allowReplace: true },
     );
   }
 
-  @ApiOperation({ summary: 'Mi inscripción actual a carrera' })
   @Get('me')
   @Roles(Role.STUDENT)
-  findMine(@Req() req: { user?: { id?: string } }) {
-    return this.userCareersService.findMine(req.user?.id as string);
+  getMine(@Req() req: { user?: { id?: string } }) {
+    return this.userCareersService.findActiveForUser(req.user?.id as string);
   }
 
   @Get()

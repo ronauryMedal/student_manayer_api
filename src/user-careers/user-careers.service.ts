@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -38,23 +39,25 @@ export class UserCareersService {
     return relation;
   }
 
-  async findOneForRequester(
-    id: string,
-    requesterId: string,
-    requesterRole: Role,
-  ) {
-    const relation = await this.findOne(id);
-    if (requesterRole !== Role.ADMIN && relation.userId !== requesterId) {
-      throw new ForbiddenException();
+  /** Inscripción activa del estudiante (`GET /user-careers/me`). */
+  async findActiveForUser(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
     }
-    return relation;
+    return this.prisma.userCareer.findFirst({
+      where: { userId },
+      include: {
+        career: true,
+        semesters: true,
+      },
+    });
   }
 
   async enrollUserInCareer(
     userId: string,
     careerId: string,
     currentSemester: number,
-    options?: { requireOwnedCareer?: boolean },
+    options?: { allowReplace?: boolean },
   ) {
     const [user, career] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
@@ -94,13 +97,22 @@ export class UserCareersService {
     } as const;
 
     if (existingRelation) {
+      if (!options?.allowReplace) {
+        throw new ConflictException(
+          'User already has a career assigned. Only admin can change it.',
+        );
+      }
       return this.prisma.userCareer.update({
         where: { id: existingRelation.id },
         data: {
           careerId,
           currentSemester,
         },
-        include,
+        include: {
+          user: true,
+          career: true,
+          semesters: true,
+        },
       });
     }
 

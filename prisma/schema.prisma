@@ -63,7 +63,7 @@ enum NotificationType {
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
 
-  ownedCareers   Career[] @relation("CareerOwner")
+  ownedCareers   Career[]       @relation("CareerOwner")
   careers        UserCareer[]
   tasks          Task[]
   califications         calification[]
@@ -77,16 +77,15 @@ enum NotificationType {
 model Career {
   id        String   @id @default(uuid())
   name      String
-  /** Institución (misma carrera puede repetirse con distinto nombre de institución) */
-  institution String
+  /** Institución o plataforma (planes personales del estudiante). */
+  institution String   @default("")
   description String
   totalCredits Int
   /** Cantidad de cuatrimestres / períodos del plan */
   totalSemester Int
-  /** Si es null, carrera de catálogo creada por admin; si coincide con User.id, es plan personal del estudiante */
+  /** Catálogo admin: null. Plan creado por un estudiante: su `userId`. */
   ownerUserId String?
-  owner       User?    @relation("CareerOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-
+  owner       User?    @relation("CareerOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   subjects Subject[]
   userCareers  UserCareer[]
   createdAt DateTime @default(now())

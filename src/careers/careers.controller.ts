@@ -37,21 +37,21 @@ export class CareersController {
     return this.careersService.createAdminCatalog(createCareerDto);
   }
 
-  @ApiOperation({
-    summary: 'Crear mi carrera (estudiante)',
-    description:
-      'Crea un plan con institución y datos propios. Por defecto lo activa como tu carrera actual.',
-  })
+  @Get('me')
+  @Roles(Role.STUDENT)
+  findMine(@Req() req: { user?: { id?: string } }) {
+    return this.careersService.findMine(req.user?.id as string);
+  }
+
   @Post('me')
   @Roles(Role.STUDENT)
-  createMy(
+  createMine(
     @Body() dto: CreateMyCareerDto,
     @Req() req: { user?: { id?: string } },
   ) {
-    return this.careersService.createMyCareer(req.user?.id as string, dto);
+    return this.careersService.createForStudent(req.user?.id as string, dto);
   }
 
-  @ApiOperation({ summary: 'Listar todo el catálogo (solo admin)' })
   @Get()
   @Roles(Role.ADMIN)
   findAllAdmin() {

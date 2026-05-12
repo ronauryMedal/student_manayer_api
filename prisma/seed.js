@@ -92,24 +92,11 @@ async function main() {
   const careerStudentMain = await prisma.career.create({
     data: {
       name: 'Ingenieria de Software',
-      institution: 'Universidad Nacional Demo',
-      description: 'Plan personal del estudiante demo — materias y horarios de prueba',
+      institution: 'Universidad Demo',
+      description: 'Carrera orientada al desarrollo de software',
       totalCredits: 240,
       totalSemester: 12,
-      ownerUserId: student.id,
-    },
-  });
-
-  // Segundo plan del mismo estudiante (no inscrito; sirve para GET /careers/me con 2 filas)
-  await prisma.career.create({
-    data: {
-      name: 'Ingenieria de Software',
-      institution: 'Instituto Tecnologico Demo',
-      description:
-        'Mismo nombre de carrera, distinta institución (prueba de duplicados logicos)',
-      totalCredits: 200,
-      totalSemester: 10,
-      ownerUserId: student.id,
+      ownerUserId: null,
     },
   });
 
