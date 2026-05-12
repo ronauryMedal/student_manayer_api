@@ -109,10 +109,13 @@ En Docker (recomendado para este proyecto):
 docker compose exec api npx prisma db seed
 ```
 
-Usuarios de prueba que crea el seed:
+Usuarios de prueba (contraseña en todos: `12345678`):
 
-- Admin: `admin@study.com` / `12345678`
-- Student: `student@study.com` / `12345678`
+- **Admin:** `admin@study.com`
+- **Estudiante demo (plan largo, 2 carreras propias, varias materias y horarios):** `student@study.com`
+- **Estudiante secundario (plan corto 1 cuatrimestre, solo virtual):** `maria@study.com`
+
+El seed imprime en consola IDs de carreras y sugerencias de qué endpoints probar. Si falla por tablas inexistentes, ejecuta antes `docker compose exec api npx prisma migrate deploy`.
 
 ### 4) Conectar pgAdmin a PostgreSQL
 

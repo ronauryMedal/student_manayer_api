@@ -382,6 +382,18 @@ Body create (admin):
 
 Body update (admin): mismos campos en partial según `PATCH`.
 
+## Datos de prueba (seed)
+
+Tras `npx prisma migrate deploy` y `npx prisma db seed` (en Docker: `docker compose exec api …`). Contraseña común: **`12345678`**.
+
+| Usuario | Rol | Uso |
+|---------|-----|-----|
+| `admin@study.com` | ADMIN | Catálogo global, `GET /careers`, etc. |
+| `student@study.com` | STUDENT | Plan **Ingeniería de Software** (Universidad Nacional Demo): 2 carreras propias (una inscrita), materias cuatrimestre 1–3, presencial / virtual / híbrida, horarios, tareas, calificaciones, una materia ya en `user-approved-subjects` (puedes agregar **Base de Datos I** con `POST …/me`). |
+| `maria@study.com` | STUDENT | Plan corto **UX Básico** (1 cuatrimestre), materia virtual, tarea y notificación. |
+
+El script `prisma/seed.js` lista IDs de carreras en consola para Postman. Si el seed falla con tabla inexistente, faltan migraciones en la base.
+
 ## Generacion de cliente frontend (opcional)
 
 Puedes generar cliente tipado con OpenAPI:
