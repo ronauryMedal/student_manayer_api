@@ -1,7 +1,9 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserApprovedSubjectDto } from './dto/create-user-approved-subject.dto';
@@ -142,6 +144,96 @@ export class UserApprovedSubjectsService {
 
     if (!item) {
       throw new NotFoundException('UserApprovedSubject relation not found');
+    }
+
+    return this.prisma.userApprovedSubject.delete({
+      where: { id },
+    });
+  }
+
+  /** Inscripciones del usuario actual (`GET /user-approved-subjects/me`). */
+  async findMine(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+    return this.prisma.userApprovedSubject.findMany({
+      where: { userId },
+      include: {
+        subject: {
+          include: {
+            career: true,
+          },
+        },
+      },
+      orderBy: { approvedAt: 'desc' },
+    });
+  }
+
+  /** Inscribir materia del plan activo (`POST /user-approved-subjects/me`). */
+  async enrollMine(userId: string, subjectId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: subjectId },
+      include: { career: true },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+
+    if (subject.career.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo podés inscribirte en materias de tus propias carreras.',
+      );
+    }
+
+    const userCareer = await this.prisma.userCareer.findFirst({
+      where: { userId },
+    });
+
+    if (!userCareer || userCareer.careerId !== subject.careerId) {
+      throw new ForbiddenException(
+        'La materia debe pertenecer a tu carrera activa.',
+      );
+    }
+
+    const dup = await this.prisma.userApprovedSubject.findFirst({
+      where: { userId, subjectId },
+    });
+    if (dup) {
+      throw new ConflictException('Ya estás inscripto en esta materia');
+    }
+
+    return this.prisma.userApprovedSubject.create({
+      data: {
+        userId,
+        subjectId,
+      },
+      include: {
+        subject: {
+          include: {
+            career: true,
+          },
+        },
+      },
+    });
+  }
+
+  /** Baja de inscripción (`DELETE /user-approved-subjects/me/:id`). */
+  async removeMine(userId: string, id: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const item = await this.prisma.userApprovedSubject.findUnique({
+      where: { id },
+    });
+
+    if (!item || item.userId !== userId) {
+      throw new NotFoundException('Inscripción no encontrada');
     }
 
     return this.prisma.userApprovedSubject.delete({

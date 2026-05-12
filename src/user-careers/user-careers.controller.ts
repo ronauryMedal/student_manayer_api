@@ -37,6 +37,7 @@ export class UserCareersController {
   }
 
   @Post('me')
+  @Roles(Role.STUDENT)
   selectMyCareer(
     @Body() selectOwnCareerDto: SelectOwnCareerDto,
     @Req() req: { user?: { id?: string } },
@@ -45,7 +46,14 @@ export class UserCareersController {
       req.user?.id as string,
       selectOwnCareerDto.careerId,
       selectOwnCareerDto.currentSemester,
+      { allowReplace: true },
     );
+  }
+
+  @Get('me')
+  @Roles(Role.STUDENT)
+  getMine(@Req() req: { user?: { id?: string } }) {
+    return this.userCareersService.findActiveForUser(req.user?.id as string);
   }
 
   @Get()

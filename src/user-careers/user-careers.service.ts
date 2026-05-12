@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -37,10 +38,25 @@ export class UserCareersService {
     return relation;
   }
 
+  /** Inscripción activa del estudiante (`GET /user-careers/me`). */
+  async findActiveForUser(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+    return this.prisma.userCareer.findFirst({
+      where: { userId },
+      include: {
+        career: true,
+        semesters: true,
+      },
+    });
+  }
+
   async enrollUserInCareer(
     userId: string,
     careerId: string,
     currentSemester: number,
+    options?: { allowReplace?: boolean },
   ) {
     const [user, career] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
@@ -66,9 +82,23 @@ export class UserCareersService {
     });
 
     if (existingRelation) {
-      throw new ConflictException(
-        'User already has a career assigned. Only admin can change it.',
-      );
+      if (!options?.allowReplace) {
+        throw new ConflictException(
+          'User already has a career assigned. Only admin can change it.',
+        );
+      }
+      return this.prisma.userCareer.update({
+        where: { id: existingRelation.id },
+        data: {
+          careerId,
+          currentSemester,
+        },
+        include: {
+          user: true,
+          career: true,
+          semesters: true,
+        },
+      });
     }
 
     return this.prisma.userCareer.create({

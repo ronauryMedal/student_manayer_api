@@ -40,9 +40,11 @@ async function main() {
   const career = await prisma.career.create({
     data: {
       name: 'Ingenieria de Software',
+      institution: 'Universidad Demo',
       description: 'Carrera orientada al desarrollo de software',
       totalCredits: 240,
       totalSemester: 12,
+      ownerUserId: null,
     },
   });
 
