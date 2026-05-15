@@ -35,7 +35,7 @@ export class SubjectTeachersController {
   @ApiOperation({
     summary: 'Asignar profesor a mi materia',
     description:
-      'La materia debe pertenecer a una carrera creada por ti. El profesor debe existir en el catálogo (creado por admin).',
+      'La materia debe ser de una carrera que tú creaste. El profesor debe ser uno que tú creaste (POST /teachers/me).',
   })
   @Post('me')
   @Roles(Role.STUDENT)

@@ -107,18 +107,21 @@ async function main() {
       data: {
         name: 'Ana Martinez',
         email: 'ana.martinez@study.com',
+        ownerUserId: student.id,
       },
     }),
     prisma.teacher.create({
       data: {
         name: 'Carlos Perez',
         email: 'carlos.perez@study.com',
+        ownerUserId: student.id,
       },
     }),
     prisma.teacher.create({
       data: {
         name: 'Laura Gimenez',
         email: 'laura.gimenez@study.com',
+        ownerUserId: studentMaria.id,
       },
     }),
   ]);
@@ -393,7 +396,8 @@ async function main() {
   console.log('Que probar');
   console.log('  - Login student@study.com -> GET /careers/me (2 carreras), GET /subjects/me');
   console.log('  - POST /user-approved-subjects/me con subjectBd (misma carrera inscrita)');
-  console.log('  - POST /subject-teachers/me con teacherId existente y subjectId propio');
+  console.log('  - POST /teachers/me → crear profesor propio');
+  console.log('  - POST /subject-teachers/me con teacherId y subjectId de tu plan');
   console.log('  - Login admin@study.com -> GET /careers (incluye catalogo + personales)');
   console.log('  - maria@study.com -> flujo curso corto + una materia virtual');
   console.log('');
