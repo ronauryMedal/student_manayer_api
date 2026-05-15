@@ -10,11 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -37,6 +33,10 @@ export class CareersController {
     return this.careersService.createAdminCatalog(createCareerDto);
   }
 
+  @ApiOperation({
+    summary: 'Mis carreras creadas',
+    description: 'Solo las carreras donde tú eres el dueño del plan',
+  })
   @Get('me')
   @Roles(Role.STUDENT)
   findMine(@Req() req: { user?: { id?: string } }) {
@@ -58,16 +58,6 @@ export class CareersController {
     return this.careersService.findAllAdmin();
   }
 
-  @ApiOperation({
-    summary: 'Mis carreras creadas',
-    description: 'Solo las carreras donde tú eres el dueño del plan',
-  })
-  @Get('me')
-  @Roles(Role.STUDENT)
-  findMine(@Req() req: { user?: { id?: string } }) {
-    return this.careersService.findMine(req.user?.id as string);
-  }
-
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -85,14 +75,10 @@ export class CareersController {
     @Body() updateCareerDto: UpdateCareerDto,
     @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.careersService.updateForRequester(
-      id,
-      updateCareerDto,
-      {
-        id: req.user?.id as string,
-        role: req.user?.role as Role,
-      },
-    );
+    return this.careersService.updateForRequester(id, updateCareerDto, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
   @Delete(':id')
