@@ -79,6 +79,7 @@ flowchart LR
   D --> E[POST /subject-teachers/me]
   B --> F[GET /user-careers/me]
   C --> G[POST /user-approved-subjects/me]
+  A --> H[GET /dashboard/me]
 ```
 
 | Paso | Endpoint | Qué hace |
@@ -94,8 +95,72 @@ flowchart LR
 | 9 | `GET /user-careers/me` | Ver carrera/cuatrimestre activos. |
 | 10 | `POST /user-careers/me` | Cambiar a otra carrera **que tú creaste** (opcional). |
 | 11 | `POST /user-approved-subjects/me` | Marcar materia en tu malla (plan activo). |
+| **Inicio** | **`GET /dashboard/me`** | **Una sola llamada:** tareas pendientes + materias del cuatrimestre actual con horarios y profesores. |
 
 **Importante:** el estudiante **no** usa `GET /teachers` ni `POST /teachers` (solo admin). Para profesores propios: siempre **`/teachers/me`**.
+
+---
+
+## Pantalla de inicio (`GET /dashboard/me`)
+
+Pensado para la **home** del estudiante: UI moderna en Ionic usando estos datos.
+
+| Método | Ruta | Rol |
+|--------|------|-----|
+| `GET` | `/dashboard/me` | **STUDENT** |
+
+**Headers:** `Authorization: Bearer <token>`
+
+### Respuesta (forma general)
+
+```json
+{
+  "userCareer": {
+    "id": "uuid",
+    "currentSemester": 1,
+    "career": { "id": "...", "name": "...", "institution": "...", "totalSemester": 12 },
+    "semesters": []
+  },
+  "currentQuarter": 1,
+  "pendingTasks": [
+    {
+      "id": "...",
+      "title": "...",
+      "dueDate": "...",
+      "isCompleted": false,
+      "subjectId": "...",
+      "subject": {
+        "name": "Programación I",
+        "schedules": [{ "weekday": "MONDAY", "startTime": "...", "endTime": "...", "room": null }],
+        "career": { "id": "...", "name": "..." }
+      }
+    }
+  ],
+  "subjectsThisQuarter": [
+    {
+      "id": "...",
+      "name": "Programación I",
+      "quarterNumber": 1,
+      "modality": "IN_PERSON",
+      "career": {},
+      "schedules": [],
+      "teachers": [{ "teacher": { "name": "...", "email": null } }]
+    }
+  ]
+}
+```
+
+- **`currentQuarter`**: igual que `userCareer.currentSemester`; las materias cumplen `quarterNumber === currentQuarter` y pertenecen a la carrera activa.
+- **`pendingTasks`**: hasta 50 con `isCompleted === false`, ordenadas por `dueDate`.
+- Sin `UserCareer`: `userCareer` y `currentQuarter` en `null`, `subjectsThisQuarter` vacío; `pendingTasks` igual puede traer datos.
+
+### UI sugerida (Ionic)
+
+1. **Cabecera:** nombre del plan (`userCareer.career.name`) + institución + chip “Cuatrimestre N”.
+2. **Este cuatrimestre:** tarjetas por `subjectsThisQuarter`: materia, modalidad, debajo `schedules` (día traducido + hora inicio–fin + aula).
+3. **Pendientes:** lista de `pendingTasks` con fecha y `subject.name`.
+
+Consumí `GET /dashboard/me` al entrar a la tab Inicio (`ionViewWillEnter` o resolver).
 
 ---
 
