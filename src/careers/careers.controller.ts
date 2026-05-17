@@ -34,13 +34,7 @@ export class CareersController {
   @Post()
   @Roles(Role.ADMIN)
   create(@Body() createCareerDto: CreateCareerDto) {
-    return this.careersService.createAdminCatalog(createCareerDto);
-  }
-
-  @Get('me')
-  @Roles(Role.STUDENT)
-  findMine(@Req() req: { user?: { id?: string } }) {
-    return this.careersService.findMine(req.user?.id as string);
+    return this.careersService.create(createCareerDto);
   }
 
   @Post('me')
@@ -52,12 +46,6 @@ export class CareersController {
     return this.careersService.createForStudent(req.user?.id as string, dto);
   }
 
-  @Get()
-  @Roles(Role.ADMIN)
-  findAllAdmin() {
-    return this.careersService.findAllAdmin();
-  }
-
   @ApiOperation({
     summary: 'Mis carreras creadas',
     description: 'Solo las carreras donde tú eres el dueño del plan',
@@ -66,6 +54,12 @@ export class CareersController {
   @Roles(Role.STUDENT)
   findMine(@Req() req: { user?: { id?: string } }) {
     return this.careersService.findMine(req.user?.id as string);
+  }
+
+  @Get()
+  @Roles(Role.ADMIN)
+  findAllAdmin() {
+    return this.careersService.findAllAdmin();
   }
 
   @Get(':id')

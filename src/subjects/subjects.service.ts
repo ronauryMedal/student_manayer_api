@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Role, SubjectModality } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMySubjectDto } from './dto/create-my-subject.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
@@ -34,6 +36,16 @@ export class SubjectsService {
     }
     const t = s.trim();
     return t.length ? t : undefined;
+  }
+
+  private parseModality(value: string | undefined): SubjectModality {
+    if (
+      value &&
+      (Object.values(SubjectModality) as string[]).includes(value)
+    ) {
+      return value as SubjectModality;
+    }
+    return SubjectModality.IN_PERSON;
   }
 
   private assertCampusFieldsForModality(
@@ -156,10 +168,8 @@ export class SubjectsService {
           ownerUserId: studentUserId,
         },
       },
-      include: {
-        career: true,
-      },
-      orderBy: [{ semesterNumber: 'asc' }, { name: 'asc' }],
+      include: subjectInclude,
+      orderBy: [{ quarterNumber: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -180,18 +190,35 @@ export class SubjectsService {
       );
     }
 
-    const semesterNumber = Math.max(1, Math.floor(Number(dto.quarterNumber)));
+    const quarterNumber = Math.max(1, Math.floor(Number(dto.quarterNumber)));
+    const modality = this.parseModality(dto.modality);
+    const building = this.trimOrUndefined(dto.building);
+    const section = this.trimOrUndefined(dto.section);
+    const courseNumber = this.trimOrUndefined(dto.courseNumber);
+
+    this.assertCampusFieldsForModality(modality, {
+      building: building ?? null,
+      section: section ?? null,
+      courseNumber: courseNumber ?? null,
+    });
+
+    await this.assertQuarterInCareerPlan(dto.careerId, quarterNumber);
+
+    const campusData =
+      modality === SubjectModality.VIRTUAL
+        ? { building: null, section: null, courseNumber: null }
+        : { building, section, courseNumber };
 
     return this.prisma.subject.create({
       data: {
         name: dto.name.trim(),
         credits: dto.credits,
-        semesterNumber,
+        quarterNumber,
         careerId: dto.careerId,
+        modality,
+        ...campusData,
       },
-      include: {
-        career: true,
-      },
+      include: subjectInclude,
     });
   }
 
@@ -214,24 +241,17 @@ export class SubjectsService {
     return this.createInternal(createSubjectDto);
   }
 
-  /** Materias de carreras creadas por el estudiante (`GET /subjects/me`). */
-  async findMine(studentUserId: string) {
-    if (!studentUserId) {
-      throw new UnauthorizedException();
-    }
+  async findAll() {
     return this.prisma.subject.findMany({
-      include: {
-        career: true,
-        teachers: {
-          include: {
-            teacher: true,
-          },
-        },
-      },
+      include: subjectInclude,
+      orderBy: [{ quarterNumber: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async findOne(id: string) {
+  async findOneForRequester(
+    id: string,
+    requester: { id: string; role: Role },
+  ) {
     const subject = await this.prisma.subject.findUnique({
       where: { id },
       include: subjectInclude,

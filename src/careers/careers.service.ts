@@ -1,16 +1,34 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { CreateCareerDto } from './dto/create-career.dto';
 import { CreateMyCareerDto } from './dto/create-my-career.dto';
 import { UpdateCareerDto } from './dto/update-career.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
+const careerInclude = {
+  subjects: true,
+  userCareers: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      semesters: true,
+    },
+  },
+} as const;
+
 @Injectable()
 export class CareersService {
-
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createCareerDto: CreateCareerDto) {
@@ -34,6 +52,7 @@ export class CareersService {
     }
     return this.prisma.career.findMany({
       where: { ownerUserId: userId },
+      include: careerInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -59,7 +78,7 @@ export class CareersService {
     const career = await this.prisma.career.create({
       data: {
         name: dto.name.trim(),
-        institution: dto.institution.trim(),
+        institution: (dto.institution ?? '').trim(),
         description,
         totalCredits: dto.totalCredits,
         totalSemester,
@@ -94,84 +113,10 @@ export class CareersService {
     return career;
   }
 
-  async findAll() {
-    const careers = await this.prisma.career.findMany( {
-      include: {
-        subjects: true,
-        userCareers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            semesters: true,
-          },
-        },
-      },
-    });
-  }
-
-  async createMyCareer(userId: string, dto: CreateMyCareerDto) {
-    const activate = dto.activate !== false;
-    const currentSemester = dto.currentSemester ?? 1;
-
-    return this.prisma.$transaction(async (tx) => {
-      const career = await tx.career.create({
-        data: {
-          name: dto.name,
-          institution: dto.institution,
-          description: dto.description,
-          totalCredits: dto.totalCredits,
-          totalSemester: dto.totalSemester,
-          ownerUserId: userId,
-        },
-      });
-
-      if (activate) {
-        if (currentSemester > career.totalSemester) {
-          throw new BadRequestException(
-            `El cuatrimestre actual no puede superar ${career.totalSemester}`,
-          );
-        }
-        const existing = await tx.userCareer.findFirst({ where: { userId } });
-        if (existing) {
-          await tx.userCareer.update({
-            where: { id: existing.id },
-            data: { careerId: career.id, currentSemester },
-          });
-        } else {
-          await tx.userCareer.create({
-            data: {
-              userId,
-              careerId: career.id,
-              currentSemester,
-            },
-          });
-        }
-      }
-
-      return tx.career.findUniqueOrThrow({
-        where: { id: career.id },
-        include: careerInclude,
-      });
-    });
-  }
-
   async findAllAdmin() {
     return this.prisma.career.findMany({
       include: careerInclude,
       orderBy: [{ institution: 'asc' }, { name: 'asc' }],
-    });
-  }
-
-  async findMine(ownerUserId: string) {
-    return this.prisma.career.findMany({
-      where: { ownerUserId },
-      include: careerInclude,
-      orderBy: { createdAt: 'desc' },
     });
   }
 

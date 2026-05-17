@@ -32,12 +32,6 @@ export class SubjectsController {
     return this.subjectsService.create(createSubjectDto);
   }
 
-  @Get('me')
-  @Roles(Role.STUDENT)
-  findMine(@Req() req: { user?: { id?: string } }) {
-    return this.subjectsService.findMine(req.user?.id as string);
-  }
-
   @Post('me')
   @Roles(Role.STUDENT)
   createMine(
@@ -47,17 +41,17 @@ export class SubjectsController {
     return this.subjectsService.createForStudent(req.user?.id as string, dto);
   }
 
-  @Get()
-  @Roles(Role.ADMIN)
-  findAll() {
-    return this.subjectsService.findAll();
-  }
-
   @ApiOperation({ summary: 'Materias de mis carreras (planes que yo creé)' })
   @Get('me')
   @Roles(Role.STUDENT)
   findMine(@Req() req: { user?: { id?: string } }) {
     return this.subjectsService.findMine(req.user?.id as string);
+  }
+
+  @Get()
+  @Roles(Role.ADMIN)
+  findAll() {
+    return this.subjectsService.findAll();
   }
 
   @Get(':id')

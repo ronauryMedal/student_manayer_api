@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -57,7 +58,7 @@ export class UserCareersService {
     userId: string,
     careerId: string,
     currentSemester: number,
-    options?: { allowReplace?: boolean },
+    options?: { allowReplace?: boolean; requireOwnedCareer?: boolean },
   ) {
     const [user, career] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
@@ -183,5 +184,35 @@ export class UserCareersService {
     return this.prisma.userCareer.delete({
       where: { id },
     });
+  }
+
+  async findOneForRequester(
+    id: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    const relation = await this.prisma.userCareer.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        career: true,
+        semesters: true,
+      },
+    });
+
+    if (!relation) {
+      throw new NotFoundException('UserCareer relation not found');
+    }
+
+    if (requesterRole === Role.ADMIN) {
+      return relation;
+    }
+    if (relation.userId !== requesterId) {
+      throw new ForbiddenException(
+        'Solo puedes ver tu propia inscripción a carrera',
+      );
+    }
+
+    return relation;
   }
 }
