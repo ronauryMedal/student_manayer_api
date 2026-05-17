@@ -50,6 +50,17 @@ export class SubjectTeachersService {
     }
   }
 
+  private assertTeacherOwnedByStudent(
+    teacher: { ownerUserId: string | null },
+    userId: string,
+  ) {
+    if (teacher.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes asignar profesores que tú creaste (POST /teachers/me)',
+      );
+    }
+  }
+
   private async createInternal(createSubjectTeacherDto: CreateSubjectTeacherDto) {
     const [subject, teacher] = await Promise.all([
       this.prisma.subject.findUnique({
@@ -99,6 +110,13 @@ export class SubjectTeachersService {
       createSubjectTeacherDto.subjectId,
       userId,
     );
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: createSubjectTeacherDto.teacherId },
+    });
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+    this.assertTeacherOwnedByStudent(teacher, userId);
     return this.createInternal(createSubjectTeacherDto);
   }
 
@@ -171,6 +189,10 @@ export class SubjectTeachersService {
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
+    }
+
+    if (requester.role === Role.STUDENT) {
+      this.assertTeacherOwnedByStudent(teacher, requester.id);
     }
 
     const duplicate = await this.prisma.subjectTeacher.findFirst({

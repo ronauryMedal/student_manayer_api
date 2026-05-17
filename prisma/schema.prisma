@@ -71,6 +71,7 @@ enum NotificationType {
   sentMessages   Message[] @relation("sender")
   receivedMessages Message[] @relation("receiver")
   approvedSubjects UserApprovedSubject[]
+  ownedTeachers    Teacher[]       @relation("TeacherOwner")
 }
 
 
@@ -165,13 +166,18 @@ model UserApprovedSubject {
 }
 
 model Teacher {
-  id    String @id @default(uuid())
-  name  String
-  email String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  /** null = catálogo admin; si lo crea un estudiante, su userId */
+  ownerUserId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  owner    User?            @relation("TeacherOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   subjects SubjectTeacher[]
+
+  @@index([ownerUserId])
 }
 
 model SubjectTeacher {

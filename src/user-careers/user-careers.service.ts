@@ -40,7 +40,23 @@ export class UserCareersService {
     return relation;
   }
 
-  /** Inscripción activa del estudiante (`GET /user-careers/me`). */
+  async findOneForRequester(
+    id: string,
+    requesterId: string,
+    requesterRole: Role,
+  ) {
+    const relation = await this.findOne(id);
+    if (requesterRole === Role.ADMIN) {
+      return relation;
+    }
+    if (relation.userId !== requesterId) {
+      throw new ForbiddenException(
+        'No tienes permiso para ver esta inscripción',
+      );
+    }
+    return relation;
+  }
+
   async findActiveForUser(userId: string) {
     if (!userId) {
       throw new UnauthorizedException();
@@ -73,12 +89,10 @@ export class UserCareersService {
       throw new NotFoundException('Career not found');
     }
 
-    if (options?.requireOwnedCareer) {
-      if (career.ownerUserId !== userId) {
-        throw new ForbiddenException(
-          'Solo puedes inscribirte en carreras que tú creaste',
-        );
-      }
+    if (options?.requireOwnedCareer && career.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes inscribirte en carreras que tú creaste',
+      );
     }
 
     if (currentSemester > career.totalSemester) {
@@ -109,11 +123,7 @@ export class UserCareersService {
           careerId,
           currentSemester,
         },
-        include: {
-          user: true,
-          career: true,
-          semesters: true,
-        },
+        include,
       });
     }
 
@@ -124,17 +134,6 @@ export class UserCareersService {
         currentSemester,
       },
       include,
-    });
-  }
-
-  async findMine(userId: string) {
-    return this.prisma.userCareer.findFirst({
-      where: { userId },
-      include: {
-        user: true,
-        career: true,
-        semesters: true,
-      },
     });
   }
 

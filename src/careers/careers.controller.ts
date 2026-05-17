@@ -10,11 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/JwtAuthGuard/Jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -34,16 +30,7 @@ export class CareersController {
   @Post()
   @Roles(Role.ADMIN)
   create(@Body() createCareerDto: CreateCareerDto) {
-    return this.careersService.create(createCareerDto);
-  }
-
-  @Post('me')
-  @Roles(Role.STUDENT)
-  createMine(
-    @Body() dto: CreateMyCareerDto,
-    @Req() req: { user?: { id?: string } },
-  ) {
-    return this.careersService.createForStudent(req.user?.id as string, dto);
+    return this.careersService.createAdminCatalog(createCareerDto);
   }
 
   @ApiOperation({
@@ -54,6 +41,15 @@ export class CareersController {
   @Roles(Role.STUDENT)
   findMine(@Req() req: { user?: { id?: string } }) {
     return this.careersService.findMine(req.user?.id as string);
+  }
+
+  @Post('me')
+  @Roles(Role.STUDENT)
+  createMine(
+    @Body() dto: CreateMyCareerDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.careersService.createForStudent(req.user?.id as string, dto);
   }
 
   @Get()
@@ -79,14 +75,10 @@ export class CareersController {
     @Body() updateCareerDto: UpdateCareerDto,
     @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.careersService.updateForRequester(
-      id,
-      updateCareerDto,
-      {
-        id: req.user?.id as string,
-        role: req.user?.role as Role,
-      },
-    );
+    return this.careersService.updateForRequester(id, updateCareerDto, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
   @Delete(':id')

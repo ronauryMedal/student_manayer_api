@@ -32,6 +32,13 @@ export class SubjectsController {
     return this.subjectsService.create(createSubjectDto);
   }
 
+  @ApiOperation({ summary: 'Materias de mis carreras (planes que yo creé)' })
+  @Get('me')
+  @Roles(Role.STUDENT)
+  findMine(@Req() req: { user?: { id?: string } }) {
+    return this.subjectsService.findMine(req.user?.id as string);
+  }
+
   @Post('me')
   @Roles(Role.STUDENT)
   createMine(
@@ -39,13 +46,6 @@ export class SubjectsController {
     @Req() req: { user?: { id?: string } },
   ) {
     return this.subjectsService.createForStudent(req.user?.id as string, dto);
-  }
-
-  @ApiOperation({ summary: 'Materias de mis carreras (planes que yo creé)' })
-  @Get('me')
-  @Roles(Role.STUDENT)
-  findMine(@Req() req: { user?: { id?: string } }) {
-    return this.subjectsService.findMine(req.user?.id as string);
   }
 
   @Get()
@@ -71,14 +71,10 @@ export class SubjectsController {
     @Body() updateSubjectDto: UpdateSubjectDto,
     @Req() req: { user?: { id?: string; role?: Role } },
   ) {
-    return this.subjectsService.updateForRequester(
-      id,
-      updateSubjectDto,
-      {
-        id: req.user?.id as string,
-        role: req.user?.role as Role,
-      },
-    );
+    return this.subjectsService.updateForRequester(id, updateSubjectDto, {
+      id: req.user?.id as string,
+      role: req.user?.role as Role,
+    });
   }
 
   @Delete(':id')

@@ -12,12 +12,14 @@ import { SubjectTeachersModule } from './subject-teachers/subject-teachers.modul
 import { SubjectsModule } from './subjects/subjects.module';
 import { UserApprovedSubjectsModule } from './user-approved-subjects/user-approved-subjects.module';
 import { UserSemestersModule } from './user-semesters/user-semesters.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
     PrismaModule,
     UsersModule,
     AuthModule,
+    DashboardModule,
     CareersModule,
     TeachersModule,
     TasksModule,

@@ -157,7 +157,17 @@ export class SubjectsService {
     });
   }
 
-  /** Materias de carreras creadas por el estudiante (`GET /subjects/me`). */
+  async create(createSubjectDto: CreateSubjectDto) {
+    return this.createInternal(createSubjectDto);
+  }
+
+  async findAll() {
+    return this.prisma.subject.findMany({
+      include: subjectInclude,
+      orderBy: [{ quarterNumber: 'asc' }, { name: 'asc' }],
+    });
+  }
+
   async findMine(studentUserId: string) {
     if (!studentUserId) {
       throw new UnauthorizedException();
@@ -173,7 +183,6 @@ export class SubjectsService {
     });
   }
 
-  /** Alta en el plan propio (`POST /subjects/me`). */
   async createForStudent(studentUserId: string, dto: CreateMySubjectDto) {
     if (!studentUserId) {
       throw new UnauthorizedException();
@@ -191,18 +200,20 @@ export class SubjectsService {
     }
 
     const quarterNumber = Math.max(1, Math.floor(Number(dto.quarterNumber)));
-    const modality = this.parseModality(dto.modality);
-    const building = this.trimOrUndefined(dto.building);
-    const section = this.trimOrUndefined(dto.section);
-    const courseNumber = this.trimOrUndefined(dto.courseNumber);
+    await this.assertQuarterInCareerPlan(dto.careerId, quarterNumber);
+
+    const modality =
+      (dto.modality as SubjectModality | undefined) ??
+      SubjectModality.IN_PERSON;
+    const building = this.trimOrUndefined(dto.building ?? undefined);
+    const section = this.trimOrUndefined(dto.section ?? undefined);
+    const courseNumber = this.trimOrUndefined(dto.courseNumber ?? undefined);
 
     this.assertCampusFieldsForModality(modality, {
       building: building ?? null,
       section: section ?? null,
       courseNumber: courseNumber ?? null,
     });
-
-    await this.assertQuarterInCareerPlan(dto.careerId, quarterNumber);
 
     const campusData =
       modality === SubjectModality.VIRTUAL
@@ -219,32 +230,6 @@ export class SubjectsService {
         ...campusData,
       },
       include: subjectInclude,
-    });
-  }
-
-  async create(createSubjectDto: CreateSubjectDto) {
-    return this.createInternal(createSubjectDto);
-  }
-
-  async createMine(userId: string, createSubjectDto: CreateSubjectDto) {
-    const career = await this.prisma.career.findUnique({
-      where: { id: createSubjectDto.careerId },
-    });
-    if (!career) {
-      throw new NotFoundException('Career not found');
-    }
-    if (career.ownerUserId !== userId) {
-      throw new ForbiddenException(
-        'Solo puedes agregar materias a carreras que tú creaste',
-      );
-    }
-    return this.createInternal(createSubjectDto);
-  }
-
-  async findAll() {
-    return this.prisma.subject.findMany({
-      include: subjectInclude,
-      orderBy: [{ quarterNumber: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -303,15 +288,15 @@ export class SubjectsService {
       updateSubjectDto.modality ?? subject.modality;
     const building =
       updateSubjectDto.building !== undefined
-        ? this.trimOrUndefined(updateSubjectDto.building) ?? null
+        ? (this.trimOrUndefined(updateSubjectDto.building) ?? null)
         : subject.building;
     const section =
       updateSubjectDto.section !== undefined
-        ? this.trimOrUndefined(updateSubjectDto.section) ?? null
+        ? (this.trimOrUndefined(updateSubjectDto.section) ?? null)
         : subject.section;
     const courseNumber =
       updateSubjectDto.courseNumber !== undefined
-        ? this.trimOrUndefined(updateSubjectDto.courseNumber) ?? null
+        ? (this.trimOrUndefined(updateSubjectDto.courseNumber) ?? null)
         : subject.courseNumber;
 
     this.assertCampusFieldsForModality(modality, {

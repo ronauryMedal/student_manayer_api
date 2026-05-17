@@ -51,7 +51,7 @@ export class UserCareersController {
       req.user?.id as string,
       selectOwnCareerDto.careerId,
       selectOwnCareerDto.currentSemester,
-      { allowReplace: true },
+      { allowReplace: true, requireOwnedCareer: true },
     );
   }
 
